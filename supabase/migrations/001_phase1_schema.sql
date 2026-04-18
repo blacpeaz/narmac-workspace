@@ -14,17 +14,23 @@ create table public.users (
 
 alter table public.users enable row level security;
 
-create policy "Users can read own profile"
-  on public.users for select
-  using (auth.uid() = id);
-
-create policy "Admins can read all users"
-  on public.users for select
-  using (
-    exists (
-      select 1 from public.users u where u.id = auth.uid() and u.role = 'admin'
-    )
+-- Helper function: checks admin role via SECURITY DEFINER to avoid RLS recursion
+create or replace function public.is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.users where id = auth.uid() and role = 'admin'
   );
+$$;
+
+create policy "Authenticated users can read own profile"
+  on public.users for select
+  to authenticated
+  using (auth.uid() = id);
 
 create policy "Users can update own profile"
   on public.users for update
@@ -52,19 +58,11 @@ create policy "Anyone authenticated can read products"
 
 create policy "Admins can insert products"
   on public.products for insert
-  with check (
-    exists (
-      select 1 from public.users u where u.id = auth.uid() and u.role = 'admin'
-    )
-  );
+  with check (public.is_admin());
 
 create policy "Admins can update products"
   on public.products for update
-  using (
-    exists (
-      select 1 from public.users u where u.id = auth.uid() and u.role = 'admin'
-    )
-  );
+  using (public.is_admin());
 
 -- 3. Stock transactions table
 create table public.stock_transactions (
@@ -87,11 +85,7 @@ create policy "Anyone authenticated can read stock_transactions"
 
 create policy "Admins can insert stock_transactions"
   on public.stock_transactions for insert
-  with check (
-    exists (
-      select 1 from public.users u where u.id = auth.uid() and u.role = 'admin'
-    )
-  );
+  with check (public.is_admin());
 
 -- 4. Audit logs table
 create table public.audit_logs (
@@ -109,11 +103,7 @@ alter table public.audit_logs enable row level security;
 
 create policy "Admins can read audit_logs"
   on public.audit_logs for select
-  using (
-    exists (
-      select 1 from public.users u where u.id = auth.uid() and u.role = 'admin'
-    )
-  );
+  using (public.is_admin());
 
 create policy "Anyone authenticated can insert audit_logs"
   on public.audit_logs for insert
