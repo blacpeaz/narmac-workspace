@@ -1,32 +1,42 @@
 "use client";
 
-import { useInventory, useLowStockItems } from "@/lib/hooks/use-inventory";
+import { useLowStockItems } from "@/lib/hooks/use-inventory";
 import { useProducts } from "@/lib/hooks/use-products";
+import { useTodaySalesTotal } from "@/lib/hooks/use-sales";
+import { useTodayExpensesTotal } from "@/lib/hooks/use-expenses";
 import { StatCard } from "@/components/dashboard/stat-card";
-import { InventoryChart } from "@/components/dashboard/inventory-chart";
 import { LowStockList } from "@/components/dashboard/low-stock-list";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Package, AlertTriangle, XCircle } from "lucide-react";
+import {
+  Package,
+  AlertTriangle,
+  XCircle,
+  Banknote,
+  Receipt,
+  TrendingUp,
+} from "lucide-react";
 
 export default function DashboardPage() {
-  const { data: inventory, isLoading: invLoading } = useInventory();
   const { data: lowStock, isLoading: lowLoading } = useLowStockItems();
   const { data: products, isLoading: prodLoading } = useProducts();
+  const { data: todaySales, isLoading: salesLoading } = useTodaySalesTotal();
+  const { data: todayExpenses, isLoading: expensesLoading } = useTodayExpensesTotal();
 
-  const isLoading = invLoading || lowLoading || prodLoading;
+  const isLoading = lowLoading || prodLoading || salesLoading || expensesLoading;
 
   const totalProducts = products?.filter((p) => p.is_active).length ?? 0;
   const lowStockCount =
     lowStock?.filter((i) => i.status === "LOW").length ?? 0;
   const outOfStockCount =
     lowStock?.filter((i) => i.status === "OUT_OF_STOCK").length ?? 0;
+  const netBalance = (todaySales ?? 0) - (todayExpenses ?? 0);
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <p className="text-sm text-[var(--muted-foreground)]">
-          Overview of your inventory and stock levels
+          Overview of your inventory, sales, and expenses
         </p>
       </div>
 
@@ -34,6 +44,9 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {isLoading ? (
           <>
+            <Skeleton className="h-28" />
+            <Skeleton className="h-28" />
+            <Skeleton className="h-28" />
             <Skeleton className="h-28" />
             <Skeleton className="h-28" />
             <Skeleton className="h-28" />
@@ -60,27 +73,38 @@ export default function DashboardPage() {
               color="#EF4444"
               subtitle="Zero quantity"
             />
+            <StatCard
+              title="Sales Today"
+              value={todaySales ?? 0}
+              icon={Banknote}
+              color="#10B981"
+              isCurrency
+            />
+            <StatCard
+              title="Expenses Today"
+              value={todayExpenses ?? 0}
+              icon={Receipt}
+              color="#EF4444"
+              isCurrency
+            />
+            <StatCard
+              title="Net Balance"
+              value={netBalance}
+              icon={TrendingUp}
+              color={netBalance >= 0 ? "#10B981" : "#EF4444"}
+              subtitle="Sales - Expenses"
+              isCurrency
+            />
           </>
         )}
       </div>
 
-      {/* Charts + alerts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          {invLoading ? (
-            <Skeleton className="h-96" />
-          ) : (
-            <InventoryChart data={inventory ?? []} />
-          )}
-        </div>
-        <div>
-          {lowLoading ? (
-            <Skeleton className="h-96" />
-          ) : (
-            <LowStockList items={lowStock ?? []} />
-          )}
-        </div>
-      </div>
+      {/* Low Stock Alerts */}
+      {lowLoading ? (
+        <Skeleton className="h-64" />
+      ) : (
+        <LowStockList items={lowStock ?? []} />
+      )}
     </div>
   );
 }

@@ -14,13 +14,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { ChevronDown, ChevronRight, ShieldAlert } from "lucide-react";
@@ -75,30 +68,32 @@ export default function AuditLogsPage() {
       <div className="flex flex-wrap items-end gap-4">
         <div className="space-y-1">
           <Label className="text-xs">Module</Label>
-          <Select value={moduleFilter || undefined} onValueChange={(v) => setModuleFilter(v === "all" ? "" : (v ?? ""))}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="All modules" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All modules</SelectItem>
-              <SelectItem value="products">Products</SelectItem>
-              <SelectItem value="stock_transactions">Stock</SelectItem>
-            </SelectContent>
-          </Select>
+          <select
+            value={moduleFilter}
+            onChange={(e) => setModuleFilter(e.target.value)}
+            className="h-9 w-40 rounded-lg border border-input bg-transparent px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/50"
+          >
+            <option value="">All modules</option>
+            <option value="products">Products</option>
+            <option value="stock_transactions">Stock</option>
+            <option value="inventory">Inventory</option>
+            <option value="sales">Sales</option>
+            <option value="expenses">Expenses</option>
+            <option value="product_categories">Categories</option>
+          </select>
         </div>
         <div className="space-y-1">
           <Label className="text-xs">Action</Label>
-          <Select value={actionFilter || undefined} onValueChange={(v) => setActionFilter(v === "all" ? "" : (v ?? ""))}>
-            <SelectTrigger className="w-36">
-              <SelectValue placeholder="All actions" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All actions</SelectItem>
-              <SelectItem value="CREATE">Create</SelectItem>
-              <SelectItem value="UPDATE">Update</SelectItem>
-              <SelectItem value="DELETE">Delete</SelectItem>
-            </SelectContent>
-          </Select>
+          <select
+            value={actionFilter}
+            onChange={(e) => setActionFilter(e.target.value)}
+            className="h-9 w-36 rounded-lg border border-input bg-transparent px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/50"
+          >
+            <option value="">All actions</option>
+            <option value="CREATE">Create</option>
+            <option value="UPDATE">Update</option>
+            <option value="DELETE">Delete</option>
+          </select>
         </div>
         <div className="space-y-1">
           <Label className="text-xs">From</Label>

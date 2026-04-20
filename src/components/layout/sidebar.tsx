@@ -8,6 +8,9 @@ import {
   LayoutDashboard,
   Package,
   Boxes,
+  Banknote,
+  Receipt,
+  BarChart3,
   ClipboardList,
   Menu,
   X,
@@ -18,8 +21,11 @@ import { Button } from "@/components/ui/button";
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, adminOnly: false },
   { href: "/inventory", label: "Inventory", icon: Boxes, adminOnly: false },
+  { href: "/sales", label: "Sales", icon: Banknote, adminOnly: false },
+  { href: "/expenses", label: "Expenses", icon: Receipt, adminOnly: false },
+  { href: "/visualization", label: "Visualization", icon: BarChart3, adminOnly: false },
   { href: "/products", label: "Products", icon: Package, adminOnly: true },
-  { href: "/audit-logs", label: "Audit Logs", icon: ClipboardList, adminOnly: false },
+  { href: "/audit-logs", label: "Audit Logs", icon: ClipboardList, adminOnly: true },
 ];
 
 export function Sidebar() {

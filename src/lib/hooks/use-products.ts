@@ -1,18 +1,25 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/lib/supabase/use-supabase";
+import { logAudit } from "@/lib/supabase/audit";
 import type { Product } from "@/lib/types/database";
 
+const PRODUCT_KEYS = ["products", "inventory", "audit-logs"] as const;
+
+function invalidateProductKeys(qc: ReturnType<typeof useQueryClient>) {
+  PRODUCT_KEYS.forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
+}
+
 export function useProducts() {
-  const supabase = createClient();
+  const supabase = useSupabase();
 
   return useQuery({
     queryKey: ["products"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("*")
+        .select("*, category:product_categories(id, name)")
         .order("type")
         .order("size");
 
@@ -23,14 +30,14 @@ export function useProducts() {
 }
 
 export function useActiveProducts() {
-  const supabase = createClient();
+  const supabase = useSupabase();
 
   return useQuery({
     queryKey: ["products", "active"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("*")
+        .select("*, category:product_categories(id, name)")
         .eq("is_active", true)
         .order("type")
         .order("size");
@@ -43,153 +50,99 @@ export function useActiveProducts() {
 
 interface CreateProductInput {
   type: string;
-  size: string;
+  size: string | null;
   unit: string;
   low_stock_threshold: number;
+  category_id: string | null;
 }
 
 export function useCreateProduct() {
-  const supabase = createClient();
+  const supabase = useSupabase();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (input: CreateProductInput) => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
 
       const { data, error } = await supabase
         .from("products")
-        .insert({
-          ...input,
-          created_by: user?.id,
-        })
+        .insert({ ...input, created_by: user?.id })
         .select()
         .single();
 
       if (error) throw error;
 
-      // Log audit
-      await supabase.from("audit_logs").insert({
-        user_id: user?.id,
-        action: "CREATE",
-        module: "products",
-        record_id: data.id,
-        old_value: null,
-        new_value: data,
+      await logAudit(supabase, {
+        userId: user?.id, action: "CREATE", module: "products",
+        recordId: data.id, newValue: data,
       });
 
       return data as Product;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["products"] });
-      queryClient.invalidateQueries({ queryKey: ["inventory"] });
-      queryClient.invalidateQueries({ queryKey: ["audit-logs"] });
-    },
+    onSuccess: () => invalidateProductKeys(queryClient),
   });
 }
 
 interface UpdateProductInput {
   id: string;
   type: string;
-  size: string;
+  size: string | null;
   unit: string;
   low_stock_threshold: number;
+  category_id: string | null;
 }
 
 export function useUpdateProduct() {
-  const supabase = createClient();
+  const supabase = useSupabase();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (input: UpdateProductInput) => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
 
-      // Get old value
       const { data: oldData } = await supabase
-        .from("products")
-        .select("*")
-        .eq("id", input.id)
-        .single();
+        .from("products").select("*").eq("id", input.id).single();
 
       const { id, ...updateData } = input;
       const { data, error } = await supabase
-        .from("products")
-        .update(updateData)
-        .eq("id", id)
-        .select()
-        .single();
+        .from("products").update(updateData).eq("id", id).select().single();
 
       if (error) throw error;
 
-      // Log audit
-      await supabase.from("audit_logs").insert({
-        user_id: user?.id,
-        action: "UPDATE",
-        module: "products",
-        record_id: id,
-        old_value: oldData,
-        new_value: data,
+      await logAudit(supabase, {
+        userId: user?.id, action: "UPDATE", module: "products",
+        recordId: id, oldValue: oldData, newValue: data,
       });
 
       return data as Product;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["products"] });
-      queryClient.invalidateQueries({ queryKey: ["inventory"] });
-      queryClient.invalidateQueries({ queryKey: ["audit-logs"] });
-    },
+    onSuccess: () => invalidateProductKeys(queryClient),
   });
 }
 
 export function useToggleProduct() {
-  const supabase = createClient();
+  const supabase = useSupabase();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      id,
-      is_active,
-    }: {
-      id: string;
-      is_active: boolean;
-    }) => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
+      const { data: { user } } = await supabase.auth.getUser();
 
       const { data: oldData } = await supabase
-        .from("products")
-        .select("*")
-        .eq("id", id)
-        .single();
+        .from("products").select("*").eq("id", id).single();
 
       const { data, error } = await supabase
-        .from("products")
-        .update({ is_active })
-        .eq("id", id)
-        .select()
-        .single();
+        .from("products").update({ is_active }).eq("id", id).select().single();
 
       if (error) throw error;
 
-      await supabase.from("audit_logs").insert({
-        user_id: user?.id,
-        action: "UPDATE",
-        module: "products",
-        record_id: id,
-        old_value: oldData,
-        new_value: data,
+      await logAudit(supabase, {
+        userId: user?.id, action: "UPDATE", module: "products",
+        recordId: id, oldValue: oldData, newValue: data,
       });
 
       return data as Product;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["products"] });
-      queryClient.invalidateQueries({ queryKey: ["inventory"] });
-      queryClient.invalidateQueries({ queryKey: ["audit-logs"] });
-    },
+    onSuccess: () => invalidateProductKeys(queryClient),
   });
 }

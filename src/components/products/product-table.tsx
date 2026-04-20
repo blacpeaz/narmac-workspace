@@ -31,6 +31,7 @@ export function ProductTable({
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead>Category</TableHead>
             <TableHead>Type</TableHead>
             <TableHead>Size</TableHead>
             <TableHead>Unit</TableHead>
@@ -42,15 +43,18 @@ export function ProductTable({
         <TableBody>
           {products.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} className="text-center py-8 text-[var(--muted-foreground)]">
+              <TableCell colSpan={7} className="text-center py-8 text-[var(--muted-foreground)]">
                 No products found. Add your first product to get started.
               </TableCell>
             </TableRow>
           ) : (
             products.map((product) => (
               <TableRow key={product.id}>
+                <TableCell className="text-sm text-[var(--muted-foreground)]">
+                  {(product.category as unknown as { name: string })?.name ?? "—"}
+                </TableCell>
                 <TableCell className="font-medium">{product.type}</TableCell>
-                <TableCell>{product.size}</TableCell>
+                <TableCell>{product.size || "—"}</TableCell>
                 <TableCell>{product.unit}</TableCell>
                 <TableCell className="text-right">
                   {product.low_stock_threshold}

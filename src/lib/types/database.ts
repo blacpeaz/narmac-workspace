@@ -8,15 +8,23 @@ export interface UserProfile {
   created_at: string;
 }
 
+export interface ProductCategory {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
 export interface Product {
   id: string;
   type: string;
-  size: string;
+  size: string | null;
   unit: string;
   low_stock_threshold: number;
   is_active: boolean;
+  category_id: string | null;
   created_at: string;
   created_by: string | null;
+  category?: ProductCategory;
 }
 
 export type StockTransactionType = "IN" | "OUT";
@@ -45,6 +53,43 @@ export interface AuditLog {
   old_value: Record<string, unknown> | null;
   new_value: Record<string, unknown> | null;
   created_at: string;
+  user?: UserProfile;
+}
+
+export type PaymentType = "cash" | "transfer" | "credit";
+
+export interface Sale {
+  id: string;
+  product_id: string;
+  quantity: number;
+  unit_price: number;
+  total: number;
+  payment_type: PaymentType;
+  notes: string | null;
+  customer_name: string | null;
+  customer_phone: string | null;
+  customer_address: string | null;
+  created_at: string;
+  created_by: string | null;
+  product?: Product;
+  user?: UserProfile;
+}
+
+export type ExpenseCategory = string;
+
+export interface ExpenseCategoryRecord {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
+export interface Expense {
+  id: string;
+  category: string;
+  amount: number;
+  description: string | null;
+  created_at: string;
+  created_by: string | null;
   user?: UserProfile;
 }
 

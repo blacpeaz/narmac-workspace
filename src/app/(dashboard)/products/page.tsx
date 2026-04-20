@@ -11,9 +11,12 @@ import {
 import { ProductTable } from "@/components/products/product-table";
 import { ProductDialog } from "@/components/products/product-dialog";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, ShieldAlert } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Plus, ShieldAlert, Tags, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useCategories, useDeleteCategory } from "@/lib/hooks/use-categories";
 import type { Product } from "@/lib/types/database";
 
 export default function ProductsPage() {
@@ -22,6 +25,8 @@ export default function ProductsPage() {
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
   const toggleProduct = useToggleProduct();
+  const { data: categories } = useCategories();
+  const deleteCategory = useDeleteCategory();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -42,11 +47,19 @@ export default function ProductsPage() {
     );
   }
 
+  const handleDeleteCategory = (id: string, name: string) => {
+    deleteCategory.mutate(id, {
+      onSuccess: () => toast.success(`Category "${name}" deleted`),
+      onError: (err) => toast.error(err.message),
+    });
+  };
+
   const handleCreate = (data: {
     type: string;
-    size: string;
+    size: string | null;
     unit: string;
     low_stock_threshold: number;
+    category_id: string | null;
   }) => {
     createProduct.mutate(data, {
       onSuccess: () => {
@@ -61,9 +74,10 @@ export default function ProductsPage() {
 
   const handleUpdate = (data: {
     type: string;
-    size: string;
+    size: string | null;
     unit: string;
     low_stock_threshold: number;
+    category_id: string | null;
   }) => {
     if (!editingProduct) return;
     updateProduct.mutate(
@@ -102,7 +116,7 @@ export default function ProductsPage() {
         <div>
           <h1 className="text-2xl font-bold">Products</h1>
           <p className="text-sm text-[var(--muted-foreground)]">
-            Manage your product catalog (type + size)
+            Manage your product catalog
           </p>
         </div>
         <Button onClick={() => setDialogOpen(true)}>
@@ -121,6 +135,41 @@ export default function ProductsPage() {
           isToggling={toggleProduct.isPending}
         />
       )}
+
+      {/* Manage Categories */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Tags className="w-4 h-4" />
+            Categories
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            {(categories ?? []).map((c) => (
+              <Badge
+                key={c.id}
+                variant="secondary"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm"
+              >
+                {c.name}
+                <button
+                  onClick={() => handleDeleteCategory(c.id, c.name)}
+                  className="ml-1 hover:text-red-600 transition-colors"
+                  title={`Delete ${c.name}`}
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </Badge>
+            ))}
+            {(!categories || categories.length === 0) && (
+              <p className="text-sm text-[var(--muted-foreground)]">
+                No categories yet. Create one when adding a product.
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Create dialog */}
       <ProductDialog

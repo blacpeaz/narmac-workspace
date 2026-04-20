@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useInventory } from "@/lib/hooks/use-inventory";
+import { useInventory, useAddStock } from "@/lib/hooks/use-inventory";
+import { useProducts } from "@/lib/hooks/use-products";
+import { useAuth } from "@/providers/auth-provider";
 import {
   Table,
   TableBody,
@@ -10,10 +12,21 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search } from "lucide-react";
+import { toast } from "sonner";
+import { Search, Plus } from "lucide-react";
+import { SELECT_CLASS } from "@/lib/format";
 
 const statusConfig = {
   OK: {
@@ -32,7 +45,18 @@ const statusConfig = {
 
 export default function InventoryPage() {
   const { data: inventory, isLoading } = useInventory();
+  const { data: products } = useProducts();
+  const { user, isAdmin } = useAuth();
+  const addStock = useAddStock();
   const [search, setSearch] = useState("");
+
+  // Add Stock dialog state
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [stockProductId, setStockProductId] = useState("");
+  const [stockQuantity, setStockQuantity] = useState("");
+  const [stockNotes, setStockNotes] = useState("");
+
+  const activeProducts = products?.filter((p) => p.is_active) ?? [];
 
   const filtered = (inventory ?? []).filter(
     (item) =>
@@ -40,13 +64,98 @@ export default function InventoryPage() {
       item.product_size.toLowerCase().includes(search.toLowerCase())
   );
 
+  const handleAddStock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    try {
+      await addStock.mutateAsync({
+        product_id: stockProductId,
+        quantity: Number(stockQuantity),
+        notes: stockNotes || undefined,
+        created_by: user.id,
+      });
+      toast.success("Stock added successfully");
+      setStockProductId("");
+      setStockQuantity("");
+      setStockNotes("");
+      setDialogOpen(false);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to add stock";
+      toast.error(message);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Inventory</h1>
-        <p className="text-sm text-[var(--muted-foreground)]">
-          Real-time calculated stock levels (read-only)
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Inventory</h1>
+          <p className="text-sm text-[var(--muted-foreground)]">
+            Real-time calculated stock levels
+          </p>
+        </div>
+        {isAdmin && (
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger>
+              <Button>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Stock
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add Initial Stock</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleAddStock} className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Product</Label>
+                  <select
+                    value={stockProductId}
+                    onChange={(e) => setStockProductId(e.target.value)}
+                    className={SELECT_CLASS}
+                    required
+                  >
+                    <option value="">Select product</option>
+                    {activeProducts.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.type}{p.size ? ` - ${p.size}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Quantity</Label>
+                  <Input
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    placeholder="Enter quantity"
+                    value={stockQuantity}
+                    onChange={(e) => setStockQuantity(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Notes (optional)</Label>
+                  <Input
+                    placeholder="e.g. Opening balance"
+                    value={stockNotes}
+                    onChange={(e) => setStockNotes(e.target.value)}
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={addStock.isPending || !stockProductId || !stockQuantity}>
+                    {addStock.isPending ? "Adding..." : "Add Stock"}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       <div className="relative max-w-sm">

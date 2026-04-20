@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/lib/supabase/use-supabase";
 import type { AuditLog } from "@/lib/types/database";
 
 interface AuditLogFilters {
@@ -12,7 +12,7 @@ interface AuditLogFilters {
 }
 
 export function useAuditLogs(filters?: AuditLogFilters) {
-  const supabase = createClient();
+  const supabase = useSupabase();
 
   return useQuery({
     queryKey: ["audit-logs", filters],
