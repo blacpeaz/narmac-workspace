@@ -39,7 +39,9 @@ export function StatCard({
   const display = formatValue(value, isCurrency);
 
   return (
-    <Card>
+    <Card className="overflow-hidden">
+      {/* Coloured top accent stripe */}
+      <div className="h-1 w-full" style={{ backgroundColor: color }} />
       <CardContent className="p-6">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -59,8 +61,8 @@ export function StatCard({
             )}
           </div>
           <div
-            className="w-12 h-12 rounded-xl flex-shrink-0 flex items-center justify-center"
-            style={{ backgroundColor: `${color}15` }}
+            className="w-12 h-12 rounded-2xl flex-shrink-0 flex items-center justify-center shadow-md"
+            style={{ backgroundColor: `${color}20`, boxShadow: `0 4px 12px ${color}30` }}
           >
             <Icon className="w-6 h-6" style={{ color }} />
           </div>

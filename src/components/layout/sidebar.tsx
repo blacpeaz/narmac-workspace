@@ -59,18 +59,19 @@ export function Sidebar() {
 
       {/* Sidebar */}
       <aside
+        style={{ background: "var(--sidebar-gradient)" }}
         className={cn(
-          "fixed left-0 top-0 z-40 h-screen w-64 bg-[var(--sidebar)] text-[var(--sidebar-foreground)] flex flex-col transition-transform duration-200 ease-in-out",
+          "fixed left-0 top-0 z-40 h-screen w-64 text-[var(--sidebar-foreground)] flex flex-col transition-transform duration-200 ease-in-out shadow-2xl",
           "md:translate-x-0",
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         {/* Logo */}
         <div className="flex items-center gap-3 px-6 py-5 border-b border-[var(--sidebar-border)]">
-          <div className="w-8 h-8 rounded-lg bg-[var(--sidebar-primary)] flex items-center justify-center">
-            <Package className="w-4 h-4 text-white" />
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-900/40">
+            <Package className="w-5 h-5 text-white" />
           </div>
-          <span className="text-lg font-bold tracking-tight">Narmac</span>
+          <span className="text-lg font-bold tracking-tight bg-gradient-to-r from-white to-indigo-200 bg-clip-text text-transparent">Narmac</span>
         </div>
 
         {/* Nav */}
@@ -83,13 +84,13 @@ export function Sidebar() {
                 href={item.href}
                 onClick={() => setIsOpen(false)}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150",
                   isActive
-                    ? "bg-[var(--sidebar-accent)] text-[var(--sidebar-accent-foreground)]"
-                    : "text-white/70 hover:bg-[var(--sidebar-accent)] hover:text-white"
+                    ? "bg-white/15 text-white shadow-inner border border-white/20 backdrop-blur-sm"
+                    : "text-white/60 hover:bg-white/10 hover:text-white"
                 )}
               >
-                <item.icon className="h-5 w-5 flex-shrink-0" />
+                <item.icon className={cn("h-5 w-5 flex-shrink-0 transition-colors", isActive ? "text-indigo-300" : "")} />
                 {item.label}
               </Link>
             );

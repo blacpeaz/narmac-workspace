@@ -12,6 +12,18 @@ function toDays(value: number, unit: Unit): number {
   return value;
 }
 
+/** Human-readable label for a given number of days. */
+export function getRangeLabel(days: number): string {
+  if (days === 7)  return "Last 7 days";
+  if (days === 14) return "Last 14 days";
+  if (days === 30) return "Last 30 days";
+  const years = days / 365;
+  if (Number.isInteger(years)) return `Last ${years} year${years > 1 ? "s" : ""}`;
+  const months = Math.round(days / 30.44);
+  if (Math.abs(toDays(months, "months") - days) <= 1) return `Last ${months} month${months > 1 ? "s" : ""}`;
+  return `Last ${days} days`;
+}
+
 interface DayRangePickerProps {
   /** Current number of days being shown (used to highlight active preset). */
   days: number;
@@ -94,3 +106,4 @@ export function DayRangePicker({ days, onChange }: DayRangePickerProps) {
     </div>
   );
 }
+

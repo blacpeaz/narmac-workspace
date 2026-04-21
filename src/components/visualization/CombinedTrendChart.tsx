@@ -5,7 +5,7 @@ import { useSalesTrend, useExpensesTrend } from "@/lib/hooks/use-dashboard-stats
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, formatAxisTick } from "@/lib/format";
-import { DayRangePicker } from "@/components/visualization/DayRangePicker";
+import { DayRangePicker, getRangeLabel } from "@/components/visualization/DayRangePicker";
 import {
   LineChart,
   Line,
@@ -29,17 +29,24 @@ export function CombinedTrendChart() {
 
   const isLoading = salesLoading || expensesLoading;
 
+  const dateFormat = days > 60 ? "MMM yyyy" : "MMM d";
   // Merge both arrays by index — they share the same date range so alignment is guaranteed.
   const chartData = (salesTrend ?? []).map((s, i) => ({
-    date: format(new Date(s.date), "MMM d"),
+    date: format(new Date(s.date + "T12:00:00"), dateFormat),
     Sales: s.total,
     Expenses: expensesTrend?.[i]?.total ?? 0,
   }));
+  const xInterval = Math.max(0, Math.ceil(chartData.length / 6) - 1);
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-base">Sales vs Expenses</CardTitle>
+      <CardHeader className="flex flex-row items-start justify-between gap-4 pb-2">
+        <div>
+          <CardTitle className="text-base">Sales vs Expenses</CardTitle>
+          <span className="inline-block mt-1 text-xs font-medium bg-[var(--primary)]/10 text-[var(--primary)] px-2 py-0.5 rounded-full">
+            {getRangeLabel(days)}
+          </span>
+        </div>
         <DayRangePicker days={days} onChange={setDays} />
       </CardHeader>
       <CardContent>
@@ -49,7 +56,7 @@ export function CombinedTrendChart() {
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="var(--muted-foreground)" interval={Math.ceil(chartData.length / 6) - 1} />
+              <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="var(--muted-foreground)" interval={xInterval} />
               <YAxis tick={{ fontSize: 12 }} stroke="var(--muted-foreground)" width={80} tickFormatter={formatAxisTick} />
               <Tooltip
                 formatter={(value) => [formatCurrency(Number(value)), undefined]}

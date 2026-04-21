@@ -59,7 +59,7 @@ export default function DashboardPage() {
               title="Active Products"
               value={totalProducts}
               icon={Package}
-              color="#1E3A8A"
+              color="#6366F1"
             />
             <StatCard
               title="Low Stock"

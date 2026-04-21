@@ -11,11 +11,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Bell, LogOut, User } from "lucide-react";
+import { Bell, LogOut, Moon, Sun, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
 
 export function Topbar() {
   const { profile, signOut } = useAuth();
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const initials = profile?.full_name
     ? profile.full_name
@@ -27,7 +32,7 @@ export function Topbar() {
     : "U";
 
   return (
-    <header className="h-16 border-b border-[var(--border)] bg-[var(--card)] flex items-center justify-between px-6">
+    <header className="h-16 border-b border-[var(--border)] bg-[var(--card)]/80 backdrop-blur-md flex items-center justify-between px-6">
       {/* Left: date */}
       <div className="flex items-center gap-4 md:pl-0 pl-10">
         <span className="text-sm text-[var(--muted-foreground)]">
@@ -37,9 +42,24 @@ export function Topbar() {
 
       {/* Right: alerts + user */}
       <div className="flex items-center gap-3">
+        {/* Theme toggle */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          className="relative text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors"
+          aria-label="Toggle theme"
+        >
+          {mounted ? (
+            theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />
+          ) : (
+            <Moon className="h-5 w-5" />
+          )}
+        </Button>
+
         {/* Alerts placeholder */}
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5 text-[var(--muted-foreground)]" />
+        <Button variant="ghost" size="icon" className="relative text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors">
+          <Bell className="h-5 w-5" />
         </Button>
 
         {/* User dropdown */}
