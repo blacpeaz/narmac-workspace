@@ -4,6 +4,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { CURRENCY_SYMBOL } from "@/lib/format";
 import type { LucideIcon } from "lucide-react";
 
+/**
+ * Formats a numeric (or numeric-string) value for display.
+ * When `isCurrency` is true, the local currency symbol is appended.
+ */
 function formatValue(value: string | number, isCurrency: boolean): string {
   if (typeof value === "number" || !isNaN(Number(value))) {
     const num = typeof value === "number" ? value : Number(value);
@@ -23,6 +27,7 @@ interface StatCardProps {
   isCurrency?: boolean;
 }
 
+/** Displays a single KPI metric with a coloured icon and optional subtitle. */
 export function StatCard({
   title,
   value,

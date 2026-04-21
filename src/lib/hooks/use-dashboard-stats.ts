@@ -3,6 +3,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useSupabase } from "@/lib/supabase/use-supabase";
 
+// Dashboard charts are less time-sensitive; 60-second stale time reduces
+// unnecessary refetches while still keeping data reasonably fresh.
+const STALE_TIME = 60_000;
+
 export interface DailyTotal {
   date: string;
   total: number;
@@ -15,18 +19,24 @@ export interface TopProduct {
   total_revenue: number;
 }
 
-/** Group rows by date into a { date, total } array, pre-filling missing days with 0. */
+/**
+ * Groups raw rows (each with a `created_at` timestamp and a numeric `value`) into
+ * a `{ date, total }` array spanning `days` days starting from `from`.
+ * Days with no rows are pre-filled with 0 so charts render continuous lines.
+ */
 function groupByDate(
   rows: { created_at: string; value: number }[],
   from: Date,
   days: number,
 ): DailyTotal[] {
+  // Pre-fill every day in the range with 0.
   const grouped: Record<string, number> = {};
   for (let i = 0; i < days; i++) {
     const d = new Date(from);
     d.setDate(d.getDate() + i);
     grouped[d.toISOString().split("T")[0]] = 0;
   }
+  // Accumulate actual values per date.
   for (const r of rows) {
     const date = new Date(r.created_at).toISOString().split("T")[0];
     grouped[date] = (grouped[date] ?? 0) + r.value;
@@ -34,11 +44,13 @@ function groupByDate(
   return Object.entries(grouped).map(([date, total]) => ({ date, total }));
 }
 
+/** Returns daily sales totals for the last `days` days, suitable for line charts. */
 export function useSalesTrend(days: number = 7) {
   const supabase = useSupabase();
 
   return useQuery({
     queryKey: ["sales-trend", days],
+    staleTime: STALE_TIME,
     queryFn: async () => {
       const from = new Date();
       from.setDate(from.getDate() - days + 1);
@@ -59,11 +71,13 @@ export function useSalesTrend(days: number = 7) {
   });
 }
 
+/** Returns daily expense totals for the last `days` days, suitable for line charts. */
 export function useExpensesTrend(days: number = 7) {
   const supabase = useSupabase();
 
   return useQuery({
     queryKey: ["expenses-trend", days],
+    staleTime: STALE_TIME,
     queryFn: async () => {
       const from = new Date();
       from.setDate(from.getDate() - days + 1);
@@ -84,11 +98,16 @@ export function useExpensesTrend(days: number = 7) {
   });
 }
 
+/**
+ * Aggregates all-time expenses by category, sorted descending by total.
+ * Used for the expenses bar chart on the visualization page.
+ */
 export function useExpensesByCategory() {
   const supabase = useSupabase();
 
   return useQuery({
     queryKey: ["expenses-by-category"],
+    staleTime: STALE_TIME,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("expenses")
@@ -96,6 +115,7 @@ export function useExpensesByCategory() {
 
       if (error) throw error;
 
+      // Group expense amounts by category name.
       const grouped: Record<string, number> = {};
       for (const exp of data ?? []) {
         grouped[exp.category] = (grouped[exp.category] ?? 0) + Number(exp.amount);
@@ -108,11 +128,16 @@ export function useExpensesByCategory() {
   });
 }
 
+/**
+ * Returns the top and bottom `limit` products by quantity sold.
+ * Used to power the "Most Sold" and "Least Sold" tables.
+ */
 export function useTopProducts(limit: number = 5) {
   const supabase = useSupabase();
 
   return useQuery({
     queryKey: ["top-products", limit],
+    staleTime: STALE_TIME,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("sales")
@@ -120,6 +145,7 @@ export function useTopProducts(limit: number = 5) {
 
       if (error) throw error;
 
+      // Aggregate quantity and revenue per unique product (type + size combination).
       const grouped: Record<string, { qty: number; revenue: number; type: string; size: string | null }> = {};
       for (const sale of data ?? []) {
         const product = sale.product as unknown as { type: string; size: string | null } | null;

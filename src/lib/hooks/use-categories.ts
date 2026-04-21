@@ -2,14 +2,18 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSupabase } from "@/lib/supabase/use-supabase";
-import { logAudit } from "@/lib/supabase/audit";
+import { logAudit, getCurrentUserId } from "@/lib/supabase/audit";
 import type { ProductCategory } from "@/lib/types/database";
 
+const STALE_TIME = 60_000; // 1 minute — categories rarely change
+
+/** Fetches all product categories ordered alphabetically. */
 export function useCategories() {
   const supabase = useSupabase();
 
   return useQuery({
     queryKey: ["categories"],
+    staleTime: STALE_TIME,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("product_categories")
@@ -22,13 +26,14 @@ export function useCategories() {
   });
 }
 
+/** Creates a product category and logs the action to the audit trail. */
 export function useCreateCategory() {
   const supabase = useSupabase();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (name: string) => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const userId = await getCurrentUserId(supabase);
 
       const { data, error } = await supabase
         .from("product_categories")
@@ -39,7 +44,7 @@ export function useCreateCategory() {
       if (error) throw error;
 
       await logAudit(supabase, {
-        userId: user?.id, action: "CREATE", module: "product_categories",
+        userId, action: "CREATE", module: "product_categories",
         recordId: data.id, newValue: data,
       });
 
@@ -51,14 +56,19 @@ export function useCreateCategory() {
   });
 }
 
+/**
+ * Deletes a product category.  Throws if any products are still assigned to it
+ * so the UI can surface a meaningful error to the user.
+ */
 export function useDeleteCategory() {
   const supabase = useSupabase();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const userId = await getCurrentUserId(supabase);
 
+      // Guard: prevent deletion if products are still using this category.
       const { count } = await supabase
         .from("products")
         .select("id", { count: "exact", head: true })
@@ -68,6 +78,7 @@ export function useDeleteCategory() {
         throw new Error("Cannot delete category — move or remove products from it first.");
       }
 
+      // Capture the old state for the audit trail before deleting.
       const { data: oldData } = await supabase
         .from("product_categories").select("*").eq("id", id).single();
 
@@ -77,7 +88,7 @@ export function useDeleteCategory() {
       if (error) throw error;
 
       await logAudit(supabase, {
-        userId: user?.id, action: "DELETE", module: "product_categories",
+        userId, action: "DELETE", module: "product_categories",
         recordId: id, oldValue: oldData,
       });
     },

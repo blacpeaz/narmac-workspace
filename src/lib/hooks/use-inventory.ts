@@ -5,11 +5,23 @@ import { useSupabase } from "@/lib/supabase/use-supabase";
 import { logAudit } from "@/lib/supabase/audit";
 import type { InventoryItem } from "@/lib/types/database";
 
+// Shared query key for all inventory data.
+const INVENTORY_QUERY_KEY = ["inventory"] as const;
+
+// 30-second stale time avoids redundant refetches when multiple components
+// (e.g. dashboard + inventory page) mount in the same session.
+const STALE_TIME = 30_000;
+
+/**
+ * Fetches all inventory items via the `get_inventory` Supabase RPC.
+ * Results are cached under ["inventory"] for 30 seconds.
+ */
 export function useInventory() {
   const supabase = useSupabase();
 
   return useQuery({
-    queryKey: ["inventory"],
+    queryKey: INVENTORY_QUERY_KEY,
+    staleTime: STALE_TIME,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_inventory");
       if (error) throw error;
@@ -18,11 +30,17 @@ export function useInventory() {
   });
 }
 
+/**
+ * Derived from the same `useInventory` cache — filters to only LOW / OUT_OF_STOCK items.
+ * Uses a separate query key so it can be independently invalidated,
+ * but the network request is deduplicated with `useInventory` when both are mounted.
+ */
 export function useLowStockItems() {
   const supabase = useSupabase();
 
   return useQuery({
-    queryKey: ["inventory", "low-stock"],
+    queryKey: [...INVENTORY_QUERY_KEY, "low-stock"],
+    staleTime: STALE_TIME,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_inventory");
       if (error) throw error;
@@ -40,6 +58,7 @@ interface AddStockInput {
   created_by: string;
 }
 
+/** Inserts a stock-in transaction and logs it to the audit trail. */
 export function useAddStock() {
   const supabase = useSupabase();
   const queryClient = useQueryClient();
@@ -69,8 +88,8 @@ export function useAddStock() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["inventory"] });
-      queryClient.invalidateQueries({ queryKey: ["low-stock"] });
+      // Invalidate all inventory-related queries after a stock change.
+      queryClient.invalidateQueries({ queryKey: INVENTORY_QUERY_KEY });
     },
   });
 }

@@ -4,6 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useSupabase } from "@/lib/supabase/use-supabase";
 import type { AuditLog } from "@/lib/types/database";
 
+// Audit logs don't need to be ultra-fresh; 30 seconds is sufficient.
+const STALE_TIME = 30_000;
+
 interface AuditLogFilters {
   module?: string;
   action?: string;
@@ -11,11 +14,16 @@ interface AuditLogFilters {
   dateTo?: string;
 }
 
+/**
+ * Fetches audit log entries with optional filters for module, action, and date range.
+ * Results are capped at 200 rows (newest first) to avoid large payloads.
+ */
 export function useAuditLogs(filters?: AuditLogFilters) {
   const supabase = useSupabase();
 
   return useQuery({
     queryKey: ["audit-logs", filters],
+    staleTime: STALE_TIME,
     queryFn: async () => {
       let query = supabase
         .from("audit_logs")
@@ -33,6 +41,7 @@ export function useAuditLogs(filters?: AuditLogFilters) {
         query = query.gte("created_at", filters.dateFrom);
       }
       if (filters?.dateTo) {
+        // Include the full final day by appending end-of-day time.
         query = query.lte("created_at", `${filters.dateTo}T23:59:59`);
       }
 

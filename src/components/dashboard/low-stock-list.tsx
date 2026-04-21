@@ -9,6 +9,10 @@ interface LowStockListProps {
   items: InventoryItem[];
 }
 
+/**
+ * Renders a card listing inventory items that are LOW or OUT_OF_STOCK.
+ * Shows an empty-state message when all stock levels are healthy.
+ */
 export function LowStockList({ items }: LowStockListProps) {
   return (
     <Card>

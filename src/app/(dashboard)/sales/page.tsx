@@ -23,6 +23,7 @@ import { format } from "date-fns";
 import { Banknote, Plus } from "lucide-react";
 import { formatCurrency, SELECT_CLASS } from "@/lib/format";
 import type { PaymentType } from "@/lib/types/database";
+import { TableLoadingSkeleton } from "@/components/ui/table-states";
 
 export default function SalesPage() {
   const { user, isAdmin } = useAuth();
@@ -54,6 +55,7 @@ export default function SalesPage() {
   const [showForm, setShowForm] = useState(false);
 
   const activeProducts = products?.filter((p) => p.is_active) ?? [];
+  // Compute total live so the user sees it update as they type.
   const total = Number(quantity) * Number(unitPrice);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -74,6 +76,7 @@ export default function SalesPage() {
       });
 
       toast.success("Sale recorded successfully");
+      // Reset all form fields after a successful submission.
       setProductId("");
       setQuantity("");
       setUnitPrice("");
@@ -89,6 +92,7 @@ export default function SalesPage() {
     }
   };
 
+  /** Returns a Tailwind class string for the payment-type badge colour. */
   const paymentBadgeColor = (type: string) => {
     switch (type) {
       case "cash":
@@ -283,11 +287,7 @@ export default function SalesPage() {
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="p-6 space-y-3">
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-full" />
-            </div>
+            <TableLoadingSkeleton />
           ) : !sales?.length ? (
             <div className="p-12 text-center text-[var(--muted-foreground)]">
               No sales recorded yet.

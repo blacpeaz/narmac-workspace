@@ -2,20 +2,27 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSupabase } from "@/lib/supabase/use-supabase";
-import { logAudit } from "@/lib/supabase/audit";
+import { logAudit, getCurrentUserId } from "@/lib/supabase/audit";
 import type { Product } from "@/lib/types/database";
 
+// How long (ms) query data stays "fresh" before a background refetch is triggered.
+const STALE_TIME = 30_000; // 30 seconds
+
+// Related query keys to invalidate whenever a product mutation succeeds.
 const PRODUCT_KEYS = ["products", "inventory", "audit-logs"] as const;
 
+/** Invalidates all query keys that may be stale after a product change. */
 function invalidateProductKeys(qc: ReturnType<typeof useQueryClient>) {
   PRODUCT_KEYS.forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
 }
 
+/** Fetches all products (active and inactive) ordered by type then size. */
 export function useProducts() {
   const supabase = useSupabase();
 
   return useQuery({
     queryKey: ["products"],
+    staleTime: STALE_TIME,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
@@ -29,11 +36,13 @@ export function useProducts() {
   });
 }
 
+/** Fetches only active products. Shares stale time with the full products query. */
 export function useActiveProducts() {
   const supabase = useSupabase();
 
   return useQuery({
     queryKey: ["products", "active"],
+    staleTime: STALE_TIME,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
@@ -56,24 +65,25 @@ interface CreateProductInput {
   category_id: string | null;
 }
 
+/** Creates a new product and writes an audit log entry. */
 export function useCreateProduct() {
   const supabase = useSupabase();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (input: CreateProductInput) => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const userId = await getCurrentUserId(supabase);
 
       const { data, error } = await supabase
         .from("products")
-        .insert({ ...input, created_by: user?.id })
+        .insert({ ...input, created_by: userId })
         .select()
         .single();
 
       if (error) throw error;
 
       await logAudit(supabase, {
-        userId: user?.id, action: "CREATE", module: "products",
+        userId, action: "CREATE", module: "products",
         recordId: data.id, newValue: data,
       });
 
@@ -92,14 +102,16 @@ interface UpdateProductInput {
   category_id: string | null;
 }
 
+/** Updates an existing product and records the before/after values in the audit log. */
 export function useUpdateProduct() {
   const supabase = useSupabase();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (input: UpdateProductInput) => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const userId = await getCurrentUserId(supabase);
 
+      // Capture the old state for the audit trail.
       const { data: oldData } = await supabase
         .from("products").select("*").eq("id", input.id).single();
 
@@ -110,7 +122,7 @@ export function useUpdateProduct() {
       if (error) throw error;
 
       await logAudit(supabase, {
-        userId: user?.id, action: "UPDATE", module: "products",
+        userId, action: "UPDATE", module: "products",
         recordId: id, oldValue: oldData, newValue: data,
       });
 
@@ -120,14 +132,16 @@ export function useUpdateProduct() {
   });
 }
 
+/** Toggles a product's active/inactive status and records it in the audit log. */
 export function useToggleProduct() {
   const supabase = useSupabase();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const userId = await getCurrentUserId(supabase);
 
+      // Capture the old state for the audit trail.
       const { data: oldData } = await supabase
         .from("products").select("*").eq("id", id).single();
 
@@ -137,7 +151,7 @@ export function useToggleProduct() {
       if (error) throw error;
 
       await logAudit(supabase, {
-        userId: user?.id, action: "UPDATE", module: "products",
+        userId, action: "UPDATE", module: "products",
         recordId: id, oldValue: oldData, newValue: data,
       });
 

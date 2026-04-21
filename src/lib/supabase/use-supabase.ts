@@ -1,9 +1,15 @@
 "use client";
 
-import { useMemo } from "react";
+import { useState } from "react";
 import { createClient } from "./client";
 
-/** Singleton-per-render supabase client hook — avoids calling createClient() in every hook. */
+/**
+ * Returns a stable Supabase browser client that is created only once per
+ * component lifecycle (not re-created on every render).
+ * Using useState instead of useMemo guarantees a truly stable reference
+ * because useState initializers only run on mount.
+ */
 export function useSupabase() {
-  return useMemo(() => createClient(), []);
+  const [supabase] = useState(() => createClient());
+  return supabase;
 }

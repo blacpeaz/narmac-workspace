@@ -20,12 +20,13 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Receipt, Plus, Tags, Trash2 } from "lucide-react";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, SELECT_CLASS } from "@/lib/format";
 import {
   useExpenseCategories,
   useCreateExpenseCategory,
   useDeleteExpenseCategory,
 } from "@/lib/hooks/use-expense-categories";
+import { TableLoadingSkeleton } from "@/components/ui/table-states";
 
 export default function ExpensesPage() {
   const { user, isAdmin } = useAuth();
@@ -162,7 +163,7 @@ export default function ExpensesPage() {
                     <select
                       value={category}
                       onChange={(e) => setCategory(e.target.value)}
-                      className="flex-1 h-9 rounded-lg border border-input bg-transparent px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/50"
+                      className={`flex-1 ${SELECT_CLASS}`}
                       required
                     >
                       <option value="">Select category</option>
@@ -245,7 +246,7 @@ export default function ExpensesPage() {
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="h-9 w-40 rounded-lg border border-input bg-transparent px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/50"
+            className={`h-9 w-40 ${SELECT_CLASS}`}
           >
             <option value="">All categories</option>
             {(expenseCategories ?? []).map((c) => (
@@ -309,11 +310,7 @@ export default function ExpensesPage() {
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="p-6 space-y-3">
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-full" />
-            </div>
+            <TableLoadingSkeleton />
           ) : !expenses?.length ? (
             <div className="p-12 text-center text-[var(--muted-foreground)]">
               No expenses recorded yet.

@@ -10,6 +10,7 @@ interface AuditEntry {
   newValue?: unknown;
 }
 
+/** Inserts an audit log row. Throws if the insert fails. */
 export async function logAudit(supabase: SupabaseClient, entry: AuditEntry) {
   const { error } = await supabase.from("audit_logs").insert({
     user_id: entry.userId,
@@ -20,4 +21,15 @@ export async function logAudit(supabase: SupabaseClient, entry: AuditEntry) {
     new_value: entry.newValue ?? null,
   });
   if (error) throw error;
+}
+
+/**
+ * Retrieves the currently authenticated user's ID.
+ * Centralises `auth.getUser()` so mutations don't each call it directly.
+ */
+export async function getCurrentUserId(
+  supabase: SupabaseClient
+): Promise<string | undefined> {
+  const { data: { user } } = await supabase.auth.getUser();
+  return user?.id;
 }

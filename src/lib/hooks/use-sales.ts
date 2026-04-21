@@ -3,18 +3,26 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSupabase } from "@/lib/supabase/use-supabase";
 import { logAudit } from "@/lib/supabase/audit";
+import { getTodayRange } from "@/lib/format";
 import type { Sale, PaymentType } from "@/lib/types/database";
+
+const STALE_TIME = 30_000;
 
 interface SalesFilters {
   from?: string;
   to?: string;
 }
 
+/**
+ * Fetches sales records with optional date range filtering.
+ * Each unique filter combination gets its own cache entry.
+ */
 export function useSales(filters?: SalesFilters) {
   const supabase = useSupabase();
 
   return useQuery({
     queryKey: ["sales", filters],
+    staleTime: STALE_TIME,
     queryFn: async () => {
       let query = supabase
         .from("sales")
@@ -31,18 +39,23 @@ export function useSales(filters?: SalesFilters) {
   });
 }
 
+/**
+ * Returns the sum of all sales totals for today.
+ * Uses `getTodayRange()` so the date boundary is consistent across hooks.
+ */
 export function useTodaySalesTotal() {
   const supabase = useSupabase();
-  const today = new Date().toISOString().split("T")[0];
+  const { start, end } = getTodayRange();
 
   return useQuery({
     queryKey: ["sales", "today-total"],
+    staleTime: STALE_TIME,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("sales")
         .select("total")
-        .gte("created_at", `${today}T00:00:00`)
-        .lte("created_at", `${today}T23:59:59`);
+        .gte("created_at", start)
+        .lte("created_at", end);
 
       if (error) throw error;
       return (data ?? []).reduce((sum, s) => sum + Number(s.total), 0);
@@ -62,12 +75,17 @@ interface CreateSaleInput {
   created_by: string;
 }
 
+/**
+ * Records a new sale and simultaneously creates a stock-out transaction,
+ * then logs the sale to the audit trail.
+ */
 export function useCreateSale() {
   const supabase = useSupabase();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (input: CreateSaleInput) => {
+      // Insert the sale row first to get its ID for the stock transaction reference.
       const { data: sale, error: saleError } = await supabase
         .from("sales")
         .insert({
@@ -86,6 +104,7 @@ export function useCreateSale() {
 
       if (saleError) throw saleError;
 
+      // Deduct inventory by creating a stock-out transaction linked to this sale.
       const { error: stockError } = await supabase
         .from("stock_transactions")
         .insert({
@@ -108,9 +127,9 @@ export function useCreateSale() {
       return sale;
     },
     onSuccess: () => {
+      // Invalidate sales and inventory since stock levels changed.
       queryClient.invalidateQueries({ queryKey: ["sales"] });
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
-      queryClient.invalidateQueries({ queryKey: ["low-stock"] });
     },
   });
 }

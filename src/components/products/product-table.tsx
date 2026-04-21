@@ -20,6 +20,7 @@ interface ProductTableProps {
   isToggling?: boolean;
 }
 
+/** Renders the full product list in a table with edit and activate/deactivate actions. */
 export function ProductTable({
   products,
   onEdit,

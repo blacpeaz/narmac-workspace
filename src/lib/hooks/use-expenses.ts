@@ -3,7 +3,10 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSupabase } from "@/lib/supabase/use-supabase";
 import { logAudit } from "@/lib/supabase/audit";
+import { getTodayRange } from "@/lib/format";
 import type { Expense } from "@/lib/types/database";
+
+const STALE_TIME = 30_000;
 
 interface ExpensesFilters {
   from?: string;
@@ -11,11 +14,16 @@ interface ExpensesFilters {
   category?: string;
 }
 
+/**
+ * Fetches expense records with optional date range and category filtering.
+ * Each unique filter combination gets its own cache entry.
+ */
 export function useExpenses(filters?: ExpensesFilters) {
   const supabase = useSupabase();
 
   return useQuery({
     queryKey: ["expenses", filters],
+    staleTime: STALE_TIME,
     queryFn: async () => {
       let query = supabase
         .from("expenses")
@@ -33,18 +41,23 @@ export function useExpenses(filters?: ExpensesFilters) {
   });
 }
 
+/**
+ * Returns the sum of all expense amounts for today.
+ * Uses `getTodayRange()` so the date boundary is consistent with `useTodaySalesTotal`.
+ */
 export function useTodayExpensesTotal() {
   const supabase = useSupabase();
-  const today = new Date().toISOString().split("T")[0];
+  const { start, end } = getTodayRange();
 
   return useQuery({
     queryKey: ["expenses", "today-total"],
+    staleTime: STALE_TIME,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("expenses")
         .select("amount")
-        .gte("created_at", `${today}T00:00:00`)
-        .lte("created_at", `${today}T23:59:59`);
+        .gte("created_at", start)
+        .lte("created_at", end);
 
       if (error) throw error;
       return (data ?? []).reduce((sum, e) => sum + Number(e.amount), 0);
@@ -59,6 +72,7 @@ interface CreateExpenseInput {
   created_by: string;
 }
 
+/** Creates a new expense record and writes an audit log entry. */
 export function useCreateExpense() {
   const supabase = useSupabase();
   const queryClient = useQueryClient();

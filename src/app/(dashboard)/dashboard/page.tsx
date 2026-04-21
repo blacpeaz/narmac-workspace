@@ -22,8 +22,10 @@ export default function DashboardPage() {
   const { data: todaySales, isLoading: salesLoading } = useTodaySalesTotal();
   const { data: todayExpenses, isLoading: expensesLoading } = useTodayExpensesTotal();
 
+  // Show a unified loading state while any stat is still fetching.
   const isLoading = lowLoading || prodLoading || salesLoading || expensesLoading;
 
+  // Derived stat values computed from the query results.
   const totalProducts = products?.filter((p) => p.is_active).length ?? 0;
   const lowStockCount =
     lowStock?.filter((i) => i.status === "LOW").length ?? 0;

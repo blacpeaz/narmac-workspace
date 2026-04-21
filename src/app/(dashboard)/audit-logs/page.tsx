@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { ChevronDown, ChevronRight, ShieldAlert } from "lucide-react";
+import { SELECT_CLASS } from "@/lib/format";
 
 const actionColors: Record<string, string> = {
   CREATE: "bg-emerald-100 text-emerald-800 border-emerald-200",
@@ -71,7 +72,7 @@ export default function AuditLogsPage() {
           <select
             value={moduleFilter}
             onChange={(e) => setModuleFilter(e.target.value)}
-            className="h-9 w-40 rounded-lg border border-input bg-transparent px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/50"
+            className={`h-9 w-40 ${SELECT_CLASS}`}
           >
             <option value="">All modules</option>
             <option value="products">Products</option>
@@ -87,7 +88,7 @@ export default function AuditLogsPage() {
           <select
             value={actionFilter}
             onChange={(e) => setActionFilter(e.target.value)}
-            className="h-9 w-36 rounded-lg border border-input bg-transparent px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/50"
+            className={`h-9 w-36 ${SELECT_CLASS}`}
           >
             <option value="">All actions</option>
             <option value="CREATE">Create</option>

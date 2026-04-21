@@ -33,6 +33,11 @@ interface ProductDialogProps {
   isLoading?: boolean;
 }
 
+/**
+ * Modal dialog for creating or editing a product.
+ * When `product` is provided the form pre-fills with its values (edit mode);
+ * otherwise it starts blank (create mode).
+ */
 export function ProductDialog({
   open,
   onOpenChange,
@@ -135,7 +140,7 @@ export function ProductDialog({
                 <select
                   value={categoryId}
                   onChange={(e) => setCategoryId(e.target.value)}
-                  className="flex-1 h-9 rounded-lg border border-input bg-transparent px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/50"
+                  className={`flex-1 ${SELECT_CLASS}`}
                 >
                   <option value="">No category</option>
                   {(categories ?? []).map((c) => (

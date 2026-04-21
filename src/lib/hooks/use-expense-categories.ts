@@ -2,14 +2,18 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSupabase } from "@/lib/supabase/use-supabase";
-import { logAudit } from "@/lib/supabase/audit";
+import { logAudit, getCurrentUserId } from "@/lib/supabase/audit";
 import type { ExpenseCategoryRecord } from "@/lib/types/database";
 
+const STALE_TIME = 60_000; // 1 minute — categories rarely change
+
+/** Fetches all expense categories ordered alphabetically. */
 export function useExpenseCategories() {
   const supabase = useSupabase();
 
   return useQuery({
     queryKey: ["expense-categories"],
+    staleTime: STALE_TIME,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("expense_categories")
@@ -22,13 +26,14 @@ export function useExpenseCategories() {
   });
 }
 
+/** Creates an expense category and logs the action to the audit trail. */
 export function useCreateExpenseCategory() {
   const supabase = useSupabase();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (name: string) => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const userId = await getCurrentUserId(supabase);
 
       const { data, error } = await supabase
         .from("expense_categories")
@@ -39,7 +44,7 @@ export function useCreateExpenseCategory() {
       if (error) throw error;
 
       await logAudit(supabase, {
-        userId: user?.id, action: "CREATE", module: "expense_categories",
+        userId, action: "CREATE", module: "expense_categories",
         recordId: data.id, newValue: data,
       });
 
@@ -51,14 +56,16 @@ export function useCreateExpenseCategory() {
   });
 }
 
+/** Deletes an expense category and records the deletion in the audit trail. */
 export function useDeleteExpenseCategory() {
   const supabase = useSupabase();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const userId = await getCurrentUserId(supabase);
 
+      // Capture the old state for the audit trail before deleting.
       const { data: oldData } = await supabase
         .from("expense_categories").select("*").eq("id", id).single();
 
@@ -68,7 +75,7 @@ export function useDeleteExpenseCategory() {
       if (error) throw error;
 
       await logAudit(supabase, {
-        userId: user?.id, action: "DELETE", module: "expense_categories",
+        userId, action: "DELETE", module: "expense_categories",
         recordId: id, oldValue: oldData,
       });
     },

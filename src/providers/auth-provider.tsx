@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { User } from "@supabase/supabase-js";
 import type { UserProfile } from "@/lib/types/database";
 
@@ -21,52 +22,39 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => {},
 });
 
+/** Fetches the user profile row from the `users` table for a given user ID. */
+async function fetchProfile(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<UserProfile | null> {
+  const { data } = await supabase
+    .from("users")
+    .select("*")
+    .eq("id", userId)
+    .single();
+  return data as UserProfile | null;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const supabase = createClient();
+
+  // Stable client instance — created once on mount, never re-created on re-render.
+  const [supabase] = useState<SupabaseClient>(() => createClient());
 
   useEffect(() => {
-    const getUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      setUser(user);
-
-      if (user) {
-        const { data } = await supabase
-          .from("users")
-          .select("*")
-          .eq("id", user.id)
-          .single();
-        setProfile(data as UserProfile | null);
+    // onAuthStateChange fires immediately with INITIAL_SESSION on mount,
+    // so a separate getUser() call is not needed and would race for the same
+    // PKCE auth token lock, causing the "lock was stolen" error.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+        setProfile(currentUser ? await fetchProfile(supabase, currentUser.id) : null);
+        setIsLoading(false);
       }
-
-      setIsLoading(false);
-    };
-
-    getUser();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-
-      if (currentUser) {
-        const { data } = await supabase
-          .from("users")
-          .select("*")
-          .eq("id", currentUser.id)
-          .single();
-        setProfile(data as UserProfile | null);
-      } else {
-        setProfile(null);
-      }
-
-      setIsLoading(false);
-    });
+    );
 
     return () => subscription.unsubscribe();
   }, [supabase]);
