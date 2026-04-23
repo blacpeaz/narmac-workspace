@@ -7,6 +7,7 @@ import { useTodayExpensesTotal } from "@/lib/hooks/use-expenses";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { LowStockList } from "@/components/dashboard/low-stock-list";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useEffect, useState } from "react";
 import {
   Package,
   AlertTriangle,
@@ -17,13 +18,24 @@ import {
 } from "lucide-react";
 
 export default function DashboardPage() {
-  const { data: lowStock, isLoading: lowLoading } = useLowStockItems();
-  const { data: products, isLoading: prodLoading } = useProducts();
-  const { data: todaySales, isLoading: salesLoading } = useTodaySalesTotal();
-  const { data: todayExpenses, isLoading: expensesLoading } = useTodayExpensesTotal();
+  const { data: lowStock, isLoading: lowLoading, isError: lowError } = useLowStockItems();
+  const { data: products, isLoading: prodLoading, isError: prodError } = useProducts();
+  const { data: todaySales, isLoading: salesLoading, isError: salesError } = useTodaySalesTotal();
+  const { data: todayExpenses, isLoading: expensesLoading, isError: expensesError } = useTodayExpensesTotal();
 
-  // Show a unified loading state while any stat is still fetching.
-  const isLoading = lowLoading || prodLoading || salesLoading || expensesLoading;
+  // After 10 s, stop showing skeletons regardless — prevents infinite loading
+  // when Supabase free-tier project is waking up from sleep.
+  const [timedOut, setTimedOut] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setTimedOut(true), 10_000);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Show loading skeletons only while fetching — errors or timeout resolve it.
+  const isLoading = !timedOut && (
+    (lowLoading && !lowError) || (prodLoading && !prodError) ||
+    (salesLoading && !salesError) || (expensesLoading && !expensesError)
+  );
 
   // Derived stat values computed from the query results.
   const totalProducts = products?.filter((p) => p.is_active).length ?? 0;

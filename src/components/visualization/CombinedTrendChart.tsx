@@ -30,9 +30,11 @@ export function CombinedTrendChart() {
   const isLoading = salesLoading || expensesLoading;
 
   const dateFormat = days > 60 ? "MMM yyyy" : "MMM d";
-  // Merge both arrays by index — they share the same date range so alignment is guaranteed.
+  // Use rawDate as the actual dataKey so every row is unique — prevents Recharts
+  // from collapsing multiple days with the same formatted label (e.g. "Apr 2026")
+  // into one point and showing 0 on the tooltip for non-first entries.
   const chartData = (salesTrend ?? []).map((s, i) => ({
-    date: format(new Date(s.date + "T12:00:00"), dateFormat),
+    rawDate: s.date,
     Sales: s.total,
     Expenses: expensesTrend?.[i]?.total ?? 0,
   }));
@@ -56,10 +58,17 @@ export function CombinedTrendChart() {
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="var(--muted-foreground)" interval={xInterval} />
+              <XAxis
+                dataKey="rawDate"
+                tick={{ fontSize: 12 }}
+                stroke="var(--muted-foreground)"
+                interval={xInterval}
+                tickFormatter={(val) => format(new Date(val + "T12:00:00"), dateFormat)}
+              />
               <YAxis tick={{ fontSize: 12 }} stroke="var(--muted-foreground)" width={80} tickFormatter={formatAxisTick} />
               <Tooltip
                 formatter={(value) => [formatCurrency(Number(value)), undefined]}
+                labelFormatter={(val) => format(new Date(val + "T12:00:00"), "MMM d, yyyy")}
                 labelStyle={{ fontWeight: 600 }}
                 contentStyle={{ borderRadius: 8, border: "1px solid var(--border)" }}
               />

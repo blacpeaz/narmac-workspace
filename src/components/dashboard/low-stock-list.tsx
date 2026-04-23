@@ -36,7 +36,7 @@ export function LowStockList({ items }: LowStockListProps) {
               >
                 <div>
                   <p className="text-sm font-medium">
-                    {item.product_type}-{item.product_size}
+                    {item.product_size ? `${item.product_type} - ${item.product_size}` : item.product_type}
                   </p>
                   <p className="text-xs text-[var(--muted-foreground)]">
                     Threshold: {item.low_stock_threshold} {item.unit}

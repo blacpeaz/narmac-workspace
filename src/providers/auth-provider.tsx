@@ -22,17 +22,22 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => {},
 });
 
-/** Fetches the user profile row from the `users` table for a given user ID. */
+/** Fetches the user profile row from the `users` table for a given user ID.
+ * Resolves to null after 8 seconds so a sleeping Supabase project never blocks the UI. */
 async function fetchProfile(
   supabase: SupabaseClient,
   userId: string
 ): Promise<UserProfile | null> {
-  const { data } = await supabase
+  const timeout = new Promise<null>((resolve) =>
+    setTimeout(() => resolve(null), 8_000)
+  );
+  const query = supabase
     .from("users")
     .select("*")
     .eq("id", userId)
-    .single();
-  return data as UserProfile | null;
+    .single()
+    .then(({ data }) => (data as UserProfile | null));
+  return Promise.race([query, timeout]);
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {

@@ -24,7 +24,7 @@ export function ExpensesTrendChart() {
 
   const dateFormat = days > 60 ? "MMM yyyy" : "MMM d";
   const chartData = (data ?? []).map((e) => ({
-    date: format(new Date(e.date + "T12:00:00"), dateFormat),
+    rawDate: e.date,
     Expenses: e.total,
   }));
   const xInterval = Math.max(0, Math.ceil(chartData.length / 6) - 1);
@@ -47,10 +47,17 @@ export function ExpensesTrendChart() {
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="var(--muted-foreground)" interval={xInterval} />
+              <XAxis
+                dataKey="rawDate"
+                tick={{ fontSize: 12 }}
+                stroke="var(--muted-foreground)"
+                interval={xInterval}
+                tickFormatter={(val) => format(new Date(val + "T12:00:00"), dateFormat)}
+              />
               <YAxis tick={{ fontSize: 12 }} stroke="var(--muted-foreground)" width={80} tickFormatter={formatAxisTick} />
               <Tooltip
                 formatter={(value) => [formatCurrency(Number(value)), "Expenses"]}
+                labelFormatter={(val) => format(new Date(val + "T12:00:00"), "MMM d, yyyy")}
                 labelStyle={{ fontWeight: 600 }}
                 contentStyle={{ borderRadius: 8, border: "1px solid var(--border)" }}
               />

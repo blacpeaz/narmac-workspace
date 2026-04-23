@@ -25,6 +25,170 @@ const actionColors: Record<string, string> = {
   DELETE: "bg-red-100 text-red-800 border-red-200",
 };
 
+const MODULE_LABELS: Record<string, string> = {
+  products: "Products",
+  stock_transactions: "Stock",
+  inventory: "Inventory",
+  sales: "Sales",
+  expenses: "Expenses",
+  product_categories: "Categories",
+};
+
+const SKIP_KEYS = new Set(["id", "created_by", "created_at", "record_id", "updated_at"]);
+
+/** Converts a raw DB value into a readable word. */
+function humanValue(key: string, value: unknown): string {
+  if (value === null || value === undefined || value === "") return "nothing";
+  if (key === "is_active") return value ? "available for sale" : "no longer available for sale";
+  if (typeof value === "boolean") return value ? "yes" : "no";
+  if (key === "payment_type") {
+    const m: Record<string, string> = { cash: "Cash", transfer: "Bank Transfer", credit: "Credit" };
+    return m[String(value)] ?? String(value);
+  }
+  if (key === "reference_type") {
+    const m: Record<string, string> = { sale: "Sale", rebaling: "Rebaling", adjustment: "Manual Adjustment", initial: "Initial Stock Entry" };
+    return m[String(value)] ?? String(value);
+  }
+  if ((key === "unit_price" || key === "total" || key === "amount") && !isNaN(Number(value)))
+    return `${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2 })} Ar`;
+  if (key === "quantity" && !isNaN(Number(value))) return `${Number(value).toLocaleString()} units`;
+  if (key === "low_stock_threshold" && !isNaN(Number(value))) return `${Number(value)} units`;
+  return String(value);
+}
+
+/** Generates a plain-English sentence describing a single field change. */
+function toSentence(key: string, oldVal: unknown, newVal: unknown, module: string): string {
+  const n = humanValue(key, newVal);
+  const o = humanValue(key, oldVal);
+
+  switch (key) {
+    case "is_active":
+      return `This ${module.replace("_", " ")} is now ${n}.`;
+    case "unit_price":
+      return `The unit price was changed from ${o} to ${n}.`;
+    case "total":
+      return `The total amount was changed from ${o} to ${n}.`;
+    case "amount":
+      return `The amount was changed from ${o} to ${n}.`;
+    case "quantity":
+      return `The quantity was updated from ${o} to ${n}.`;
+    case "low_stock_threshold":
+      return `The low stock alert level was set from ${o} to ${n}.`;
+    case "type":
+      return `The product type was changed from "${o}" to "${n}".`;
+    case "size":
+      return `The size was changed from "${o}" to "${n}".`;
+    case "unit":
+      return `The unit of measurement was changed from "${o}" to "${n}".`;
+    case "payment_type":
+      return `The payment method was changed from ${o} to ${n}.`;
+    case "notes":
+      return `The notes were updated to: "${n}".`;
+    case "description":
+      return `The description was updated to: "${n}".`;
+    case "category":
+    case "category_id":
+      return `The category was changed from "${o}" to "${n}".`;
+    case "customer_name":
+      return `The customer name was set to "${n}".`;
+    case "customer_phone":
+      return `The customer phone number was set to "${n}".`;
+    case "customer_address":
+      return `The customer address was set to "${n}".`;
+    case "name":
+      return `The name was changed from "${o}" to "${n}".`;
+    default:
+      return `"${key}" was changed from "${o}" to "${n}".`;
+  }
+}
+
+/** Generates a plain-English sentence for a created or deleted record field. */
+function toCreateSentence(key: string, value: unknown, module: string): string {
+  const v = humanValue(key, value);
+  const mod = module.replace("_", " ");
+  switch (key) {
+    case "type": return `Product type: "${v}"`;
+    case "size": return value ? `Size: "${v}"` : `No size specified`;
+    case "unit": return `Measured in: ${v}`;
+    case "is_active": return `Status: This ${mod} is ${v}`;
+    case "low_stock_threshold": return `Low stock alert: will trigger below ${v}`;
+    case "quantity": return `Quantity: ${v}`;
+    case "unit_price": return `Unit price: ${v}`;
+    case "total": return `Total amount: ${v}`;
+    case "amount": return `Amount: ${v}`;
+    case "payment_type": return `Payment method: ${v}`;
+    case "category": return `Category: ${v}`;
+    case "notes": return value ? `Notes: "${v}"` : "";
+    case "description": return value ? `Description: "${v}"` : "";
+    case "customer_name": return value ? `Customer: ${v}` : "";
+    case "customer_phone": return value ? `Phone: ${v}` : "";
+    case "customer_address": return value ? `Address: ${v}` : "";
+    case "name": return `Name: "${v}"`;
+    default: return "";
+  }
+}
+
+function AuditDiffView({
+  action,
+  module,
+  oldValue,
+  newValue,
+}: {
+  action: string;
+  module: string;
+  oldValue: Record<string, unknown> | null;
+  newValue: Record<string, unknown> | null;
+}) {
+  if (action === "UPDATE" && oldValue && newValue) {
+    const changedKeys = Object.keys(newValue).filter(
+      (k) => !SKIP_KEYS.has(k) && JSON.stringify(oldValue[k]) !== JSON.stringify(newValue[k])
+    );
+    if (changedKeys.length === 0)
+      return <p className="text-sm text-[var(--muted-foreground)] italic">Nothing was changed.</p>;
+    return (
+      <div className="space-y-2">
+        {changedKeys.map((key) => (
+          <div key={key} className="flex items-start gap-3 rounded-lg bg-[var(--card)] border border-[var(--border)] px-4 py-3 text-sm">
+            <span className="text-base mt-0.5">✏️</span>
+            <span className="text-[var(--foreground)]">{toSentence(key, oldValue[key], newValue[key], module)}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  const data = newValue ?? oldValue;
+  if (!data)
+    return <p className="text-sm text-[var(--muted-foreground)] italic">No details available.</p>;
+
+  const isCreate = action === "CREATE";
+  const visibleKeys = Object.keys(data).filter((k) => !SKIP_KEYS.has(k));
+  const lines = visibleKeys.map((k) => toCreateSentence(k, data[k], module)).filter(Boolean);
+
+  return (
+    <div className="space-y-2">
+      <div className={`flex items-start gap-3 rounded-lg border px-4 py-3 text-sm font-medium ${
+        isCreate
+          ? "bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-950/20 dark:border-emerald-800 dark:text-emerald-300"
+          : "bg-red-50 border-red-200 text-red-800 dark:bg-red-950/20 dark:border-red-800 dark:text-red-300"
+      }`}>
+        <span className="text-base">{isCreate ? "✅" : "🗑️"}</span>
+        <span>
+          {isCreate
+            ? `A new ${MODULE_LABELS[module]?.toLowerCase().replace(/s$/, "") ?? module} was added.`
+            : `A ${MODULE_LABELS[module]?.toLowerCase().replace(/s$/, "") ?? module} record was deleted.`}
+        </span>
+      </div>
+      {lines.map((line, i) => (
+        <div key={i} className="flex items-start gap-3 rounded-lg bg-[var(--card)] border border-[var(--border)] px-4 py-2.5 text-sm">
+          <span className="text-base mt-0.5">•</span>
+          <span className="text-[var(--foreground)]">{line}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function AuditLogsPage() {
   const { isAdmin, isLoading: authLoading } = useAuth();
   const [moduleFilter, setModuleFilter] = useState<string>("");
@@ -184,43 +348,23 @@ export default function AuditLogsPage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="capitalize">
-                          {log.module}
+                          {MODULE_LABELS[log.module] ?? log.module}
                         </TableCell>
-                        <TableCell className="font-mono text-xs">
-                          {log.record_id?.slice(0, 8)}...
+                        <TableCell className="font-mono text-xs text-[var(--muted-foreground)]">
+                          {log.record_id?.slice(0, 8)}…
                         </TableCell>
                       </TableRow>
                       {isExpanded && (
                         <TableRow key={`${log.id}-detail`}>
-                          <TableCell colSpan={6} className="bg-[var(--muted)] p-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                              <div>
-                                <p className="font-medium text-xs text-[var(--muted-foreground)] mb-1">
-                                  OLD VALUE
-                                </p>
-                                <pre className="bg-[var(--card)] rounded p-3 text-xs overflow-auto max-h-48 border border-[var(--border)]">
-                                  {log.old_value
-                                    ? JSON.stringify(log.old_value, null, 2)
-                                    : "null"}
-                                </pre>
-                              </div>
-                              <div>
-                                <p className="font-medium text-xs text-[var(--muted-foreground)] mb-1">
-                                  NEW VALUE
-                                </p>
-                                <pre className="bg-[var(--card)] rounded p-3 text-xs overflow-auto max-h-48 border border-[var(--border)]">
-                                  {log.new_value
-                                    ? JSON.stringify(log.new_value, null, 2)
-                                    : "null"}
-                                </pre>
-                              </div>
-                            </div>
+                          <TableCell colSpan={6} className="bg-[var(--muted)]/50 px-6 py-4">
+                            <AuditDiffView
+                              action={log.action}
+                              module={log.module}
+                              oldValue={log.old_value as Record<string, unknown> | null}
+                              newValue={log.new_value as Record<string, unknown> | null}
+                            />
                             <p className="text-xs text-[var(--muted-foreground)] mt-3">
-                              Full timestamp:{" "}
-                              {format(
-                                new Date(log.created_at),
-                                "yyyy-MM-dd HH:mm:ss.SSS"
-                              )}
+                              {format(new Date(log.created_at), "MMMM d, yyyy 'at' HH:mm:ss")}
                             </p>
                           </TableCell>
                         </TableRow>
