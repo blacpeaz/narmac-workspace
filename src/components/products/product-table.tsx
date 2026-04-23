@@ -48,9 +48,9 @@ export function ProductTable({
             <TableHead>Type</TableHead>
             <TableHead>Size</TableHead>
             <TableHead>Unit</TableHead>
-            <TableHead className="text-right">Low Stock Threshold</TableHead>
+            <TableHead className="text-center">Low Stock Threshold</TableHead>
             <TableHead>Status</TableHead>
-            {canEdit && <TableHead className="text-right">Actions</TableHead>}
+            {canEdit && <TableHead className="text-center">Actions</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -71,7 +71,7 @@ export function ProductTable({
                 <TableCell className="font-medium">{product.type}</TableCell>
                 <TableCell>{product.size || "—"}</TableCell>
                 <TableCell>{product.unit}</TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-center">
                   {product.low_stock_threshold}
                 </TableCell>
                 <TableCell>
@@ -87,8 +87,8 @@ export function ProductTable({
                   </Badge>
                 </TableCell>
                 {canEdit && (
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
+                  <TableCell className="text-center">
+                    <div className="flex items-center justify-center gap-1">
                       {confirmDeleteId === product.id ? (
                         // Inline confirmation: green ✓ confirm, red ✗ cancel
                         <>

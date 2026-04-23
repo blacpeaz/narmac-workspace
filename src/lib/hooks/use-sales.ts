@@ -125,3 +125,40 @@ export function useCreateSale() {
     },
   });
 }
+
+/**
+ * Deletes a sale record and its associated OUT stock transaction so that
+ * inventory is automatically restored. Intended for correcting data-entry errors.
+ */
+export function useDeleteSale() {
+  const supabase = useSupabase();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (sale: Sale) => {
+      // First remove the stock-out transaction linked to this sale so stock is restored.
+      const { error: txError } = await supabase
+        .from("stock_transactions")
+        .delete()
+        .eq("reference_id", sale.id)
+        .eq("type", "OUT");
+
+      if (txError) throw txError;
+
+      const { error } = await supabase.from("sales").delete().eq("id", sale.id);
+      if (error) throw error;
+
+      await logAudit(supabase, {
+        userId: sale.created_by ?? "",
+        action: "DELETE",
+        module: "sales",
+        recordId: sale.id,
+        oldValue: sale,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sales"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
+    },
+  });
+}

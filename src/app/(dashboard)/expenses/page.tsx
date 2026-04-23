@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useExpenses, useCreateExpense } from "@/lib/hooks/use-expenses";
+import { useExpenses, useCreateExpense, useDeleteExpense } from "@/lib/hooks/use-expenses";
 import { useAuth } from "@/providers/auth-provider";
 import {
   Table,
@@ -19,7 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Receipt, Plus, Tags, Trash2 } from "lucide-react";
+import { Receipt, Plus, Tags, Trash2, Check, X } from "lucide-react";
 import { formatCurrency, SELECT_CLASS } from "@/lib/format";
 import {
   useExpenseCategories,
@@ -50,6 +50,9 @@ export default function ExpensesPage() {
     Object.keys(filters).length > 0 ? filters : undefined
   );
   const createExpense = useCreateExpense();
+  const deleteExpense = useDeleteExpense();
+
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   // Form state
   const [category, setCategory] = useState("");
@@ -324,6 +327,7 @@ export default function ExpensesPage() {
                   <TableHead className="text-right">Amount</TableHead>
                   <TableHead>Description</TableHead>
                   <TableHead>User</TableHead>
+                  {canEdit && <TableHead className="text-center">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -346,6 +350,46 @@ export default function ExpensesPage() {
                     <TableCell className="text-sm text-[var(--muted-foreground)]">
                       {(expense.user as unknown as { full_name: string })?.full_name ?? "—"}
                     </TableCell>
+                    {canEdit && (
+                      <TableCell className="text-center">
+                        {confirmDeleteId === expense.id ? (
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await deleteExpense.mutateAsync(expense);
+                                  toast.success("Expense deleted");
+                                } catch (err: unknown) {
+                                  toast.error(err instanceof Error ? err.message : "Failed to delete expense");
+                                } finally {
+                                  setConfirmDeleteId(null);
+                                }
+                              }}
+                              className="p-1 rounded hover:bg-green-100 text-green-600"
+                              title="Confirm delete"
+                              disabled={deleteExpense.isPending}
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="p-1 rounded hover:bg-red-100 text-red-500"
+                              title="Cancel"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setConfirmDeleteId(expense.id)}
+                            className="p-1 rounded hover:bg-red-100 text-[var(--muted-foreground)] hover:text-red-600 transition-colors"
+                            title="Delete expense"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>

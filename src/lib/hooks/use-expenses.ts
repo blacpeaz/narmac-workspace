@@ -104,3 +104,27 @@ export function useCreateExpense() {
     },
   });
 }
+
+/** Deletes an expense record. Intended for correcting data-entry errors. */
+export function useDeleteExpense() {
+  const supabase = useSupabase();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (expense: Expense) => {
+      const { error } = await supabase.from("expenses").delete().eq("id", expense.id);
+      if (error) throw error;
+
+      await logAudit(supabase, {
+        userId: expense.created_by ?? "",
+        action: "DELETE",
+        module: "expenses",
+        recordId: expense.id,
+        oldValue: expense,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
+    },
+  });
+}

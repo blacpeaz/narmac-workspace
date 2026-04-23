@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useSales, useCreateSale } from "@/lib/hooks/use-sales";
+import { useSales, useCreateSale, useDeleteSale } from "@/lib/hooks/use-sales";
 import { useProducts } from "@/lib/hooks/use-products";
 import { useAuth } from "@/providers/auth-provider";
 import {
@@ -20,7 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Banknote, FileSpreadsheet, Plus } from "lucide-react";
+import { Banknote, Check, FileSpreadsheet, Plus, Trash2, X } from "lucide-react";
 import * as XLSX from "xlsx";
 import { formatCurrency, SELECT_CLASS } from "@/lib/format";
 import type { PaymentType } from "@/lib/types/database";
@@ -43,6 +43,9 @@ export default function SalesPage() {
   );
   const { data: products } = useProducts();
   const createSale = useCreateSale();
+  const deleteSale = useDeleteSale();
+
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   // Form state
   const [productId, setProductId] = useState("");
@@ -351,41 +354,42 @@ export default function SalesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Product</TableHead>
-                  <TableHead className="text-right">Qty</TableHead>
-                  <TableHead className="text-right">Unit Price</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead>Payment</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>User</TableHead>
+                  <TableHead className="text-center">Date</TableHead>
+                  <TableHead className="text-center">Product</TableHead>
+                  <TableHead className="text-center">Qty</TableHead>
+                  <TableHead className="text-center">Unit Price</TableHead>
+                  <TableHead className="text-center">Total</TableHead>
+                  <TableHead className="text-center">Payment</TableHead>
+                  <TableHead className="text-center">Customer</TableHead>
+                  <TableHead className="text-center">User</TableHead>
+                  {canEdit && <TableHead className="text-center">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sales.map((sale) => (
                   <TableRow key={sale.id}>
-                    <TableCell className="text-sm">
+                    <TableCell className="text-sm text-center">
                       {format(new Date(sale.created_at), "MMM d, yyyy")}
                     </TableCell>
-                    <TableCell className="font-medium">
+                    <TableCell className="font-medium text-center">
                       {(sale.product as unknown as { type: string; size: string | null })?.type ?? "—"}
                       {(sale.product as unknown as { type: string; size: string | null })?.size
                         ? ` - ${(sale.product as unknown as { type: string; size: string | null }).size}`
                         : ""}
                     </TableCell>
-                    <TableCell className="text-right">{sale.quantity}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-center">{sale.quantity}</TableCell>
+                    <TableCell className="text-center">
                       {formatCurrency(Number(sale.unit_price))}
                     </TableCell>
-                    <TableCell className="text-right font-semibold">
+                    <TableCell className="text-center font-semibold">
                       {formatCurrency(Number(sale.total))}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-center">
                       <Badge variant="secondary" className={paymentBadgeColor(sale.payment_type)}>
                         {sale.payment_type}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-sm">
+                    <TableCell className="text-sm text-center">
                       {sale.customer_name ? (
                         <div>
                           <span className="font-medium">{sale.customer_name}</span>
@@ -397,9 +401,49 @@ export default function SalesPage() {
                         <span className="text-[var(--muted-foreground)]">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm text-[var(--muted-foreground)]">
+                    <TableCell className="text-sm text-center text-[var(--muted-foreground)]">
                       {(sale.user as unknown as { full_name: string })?.full_name ?? "—"}
                     </TableCell>
+                    {canEdit && (
+                      <TableCell className="text-center">
+                        {confirmDeleteId === sale.id ? (
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await deleteSale.mutateAsync(sale);
+                                  toast.success("Sale deleted and stock restored");
+                                } catch (err: unknown) {
+                                  toast.error(err instanceof Error ? err.message : "Failed to delete sale");
+                                } finally {
+                                  setConfirmDeleteId(null);
+                                }
+                              }}
+                              className="p-1 rounded hover:bg-green-100 text-green-600"
+                              title="Confirm delete"
+                              disabled={deleteSale.isPending}
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="p-1 rounded hover:bg-red-100 text-red-500"
+                              title="Cancel"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setConfirmDeleteId(sale.id)}
+                            className="p-1 rounded hover:bg-red-100 text-[var(--muted-foreground)] hover:text-red-600 transition-colors"
+                            title="Delete sale"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>

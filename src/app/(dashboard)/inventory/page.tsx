@@ -175,12 +175,12 @@ export default function InventoryPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Product</TableHead>
-                <TableHead>Size</TableHead>
-                <TableHead>Unit</TableHead>
-                <TableHead className="text-right">Current Stock</TableHead>
-                <TableHead className="text-right">Threshold</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="w-1/6 text-center">Product</TableHead>
+                <TableHead className="w-1/6 text-center">Size</TableHead>
+                <TableHead className="w-1/6 text-center">Unit</TableHead>
+                <TableHead className="w-1/6 text-center">Current Stock</TableHead>
+                <TableHead className="w-1/6 text-center">Threshold</TableHead>
+                <TableHead className="w-1/6 text-center">Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -201,18 +201,18 @@ export default function InventoryPage() {
                     statusConfig[item.status] || statusConfig.OK;
                   return (
                     <TableRow key={item.product_id}>
-                      <TableCell className="font-medium">
+                      <TableCell className="font-medium text-center">
                         {item.product_type}
                       </TableCell>
-                      <TableCell>{item.product_size}</TableCell>
-                      <TableCell>{item.unit}</TableCell>
-                      <TableCell className="text-right font-semibold">
+                      <TableCell className="text-center">{item.product_size}</TableCell>
+                      <TableCell className="text-center">{item.unit}</TableCell>
+                      <TableCell className="text-center font-semibold">
                         {item.current_stock}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-center">
                         {item.low_stock_threshold}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-center">
                         <Badge
                           variant="secondary"
                           className={config.className}
