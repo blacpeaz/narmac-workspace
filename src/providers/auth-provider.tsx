@@ -10,6 +10,9 @@ interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
   isAdmin: boolean;
+  isSalesRep: boolean;
+  isViewer: boolean;
+  canEdit: boolean;
   isLoading: boolean;
   signOut: () => Promise<void>;
 }
@@ -18,6 +21,9 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
   isAdmin: false,
+  isSalesRep: false,
+  isViewer: false,
+  canEdit: false,
   isLoading: true,
   signOut: async () => {},
 });
@@ -76,6 +82,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         profile,
         isAdmin: profile?.role === "admin",
+        isSalesRep: profile?.role === "sales_rep",
+        isViewer: profile?.role === "viewer",
+        canEdit: profile?.role === "admin" || profile?.role === "sales_rep",
         isLoading,
         signOut,
       }}

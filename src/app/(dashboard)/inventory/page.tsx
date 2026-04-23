@@ -46,7 +46,7 @@ const statusConfig = {
 export default function InventoryPage() {
   const { data: inventory, isLoading } = useInventory();
   const { data: products } = useProducts();
-  const { user, isAdmin } = useAuth();
+  const { user, canEdit } = useAuth();
   const addStock = useAddStock();
   const [search, setSearch] = useState("");
 
@@ -95,7 +95,7 @@ export default function InventoryPage() {
             Real-time calculated stock levels
           </p>
         </div>
-        {isAdmin && (
+        {canEdit && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger>
               <Button>

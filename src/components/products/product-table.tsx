@@ -18,6 +18,7 @@ interface ProductTableProps {
   onEdit: (product: Product) => void;
   onToggle: (id: string, is_active: boolean) => void;
   isToggling?: boolean;
+  canEdit?: boolean;
 }
 
 /** Renders the full product list in a table with edit and activate/deactivate actions. */
@@ -26,6 +27,7 @@ export function ProductTable({
   onEdit,
   onToggle,
   isToggling,
+  canEdit = true,
 }: ProductTableProps) {
   return (
     <div className="rounded-lg border border-[var(--border)] bg-[var(--card)]">
@@ -38,13 +40,15 @@ export function ProductTable({
             <TableHead>Unit</TableHead>
             <TableHead className="text-right">Low Stock Threshold</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            {canEdit && <TableHead className="text-right">Actions</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
           {products.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} className="text-center py-8 text-[var(--muted-foreground)]">
+              <TableCell
+                colSpan={canEdit ? 7 : 6}
+                className="text-center py-8 text-[var(--muted-foreground)]">
                 No products found. Add your first product to get started.
               </TableCell>
             </TableRow>
@@ -72,35 +76,37 @@ export function ProductTable({
                     {product.is_active ? "Active" : "Inactive"}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onEdit(product)}
-                      title="Edit"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() =>
-                        onToggle(product.id, !product.is_active)
-                      }
-                      disabled={isToggling}
-                      title={
-                        product.is_active ? "Deactivate" : "Activate"
-                      }
-                    >
-                      {product.is_active ? (
-                        <ToggleRight className="h-4 w-4 text-emerald-600" />
-                      ) : (
-                        <ToggleLeft className="h-4 w-4 text-gray-400" />
-                      )}
-                    </Button>
-                  </div>
-                </TableCell>
+                {canEdit && (
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onEdit(product)}
+                        title="Edit"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() =>
+                          onToggle(product.id, !product.is_active)
+                        }
+                        disabled={isToggling}
+                        title={
+                          product.is_active ? "Deactivate" : "Activate"
+                        }
+                      >
+                        {product.is_active ? (
+                          <ToggleRight className="h-4 w-4 text-emerald-600" />
+                        ) : (
+                          <ToggleLeft className="h-4 w-4 text-gray-400" />
+                        )}
+                      </Button>
+                    </div>
+                  </TableCell>
+                )}
               </TableRow>
             ))
           )}

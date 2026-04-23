@@ -14,13 +14,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, ShieldAlert, Tags, Trash2 } from "lucide-react";
+import { Plus, Tags, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useCategories, useDeleteCategory } from "@/lib/hooks/use-categories";
 import type { Product } from "@/lib/types/database";
 
 export default function ProductsPage() {
-  const { isAdmin, isLoading: authLoading } = useAuth();
+  const { isAdmin, canEdit, isLoading: authLoading } = useAuth();
   const { data: products, isLoading } = useProducts();
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
@@ -33,18 +33,6 @@ export default function ProductsPage() {
 
   if (authLoading) {
     return <Skeleton className="h-96" />;
-  }
-
-  if (!isAdmin) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <ShieldAlert className="w-12 h-12 text-[var(--muted-foreground)] mb-4" />
-        <h2 className="text-xl font-semibold">Access Denied</h2>
-        <p className="text-sm text-[var(--muted-foreground)] mt-1">
-          Only admins can manage products.
-        </p>
-      </div>
-    );
   }
 
   const handleDeleteCategory = (id: string, name: string) => {
@@ -119,10 +107,12 @@ export default function ProductsPage() {
             Manage your product catalog
           </p>
         </div>
-        <Button onClick={() => setDialogOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Product
-        </Button>
+        {canEdit && (
+          <Button onClick={() => setDialogOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Product
+          </Button>
+        )}
       </div>
 
       {isLoading ? (
@@ -133,6 +123,7 @@ export default function ProductsPage() {
           onEdit={(product) => setEditingProduct(product)}
           onToggle={handleToggle}
           isToggling={toggleProduct.isPending}
+          canEdit={canEdit}
         />
       )}
 
@@ -153,13 +144,15 @@ export default function ProductsPage() {
                 className="flex items-center gap-1.5 px-3 py-1.5 text-sm"
               >
                 {c.name}
-                <button
-                  onClick={() => handleDeleteCategory(c.id, c.name)}
-                  className="ml-1 hover:text-red-600 transition-colors"
-                  title={`Delete ${c.name}`}
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
+                {canEdit && (
+                  <button
+                    onClick={() => handleDeleteCategory(c.id, c.name)}
+                    className="ml-1 hover:text-red-600 transition-colors"
+                    title={`Delete ${c.name}`}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                )}
               </Badge>
             ))}
             {(!categories || categories.length === 0) && (
@@ -172,23 +165,27 @@ export default function ProductsPage() {
       </Card>
 
       {/* Create dialog */}
-      <ProductDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        onSubmit={handleCreate}
-        isLoading={createProduct.isPending}
-      />
+      {canEdit && (
+        <ProductDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          onSubmit={handleCreate}
+          isLoading={createProduct.isPending}
+        />
+      )}
 
       {/* Edit dialog */}
-      <ProductDialog
-        open={!!editingProduct}
-        onOpenChange={(open) => {
-          if (!open) setEditingProduct(null);
-        }}
-        product={editingProduct}
-        onSubmit={handleUpdate}
-        isLoading={updateProduct.isPending}
-      />
+      {canEdit && (
+        <ProductDialog
+          open={!!editingProduct}
+          onOpenChange={(open) => {
+            if (!open) setEditingProduct(null);
+          }}
+          product={editingProduct}
+          onSubmit={handleUpdate}
+          isLoading={updateProduct.isPending}
+        />
+      )}
     </div>
   );
 }

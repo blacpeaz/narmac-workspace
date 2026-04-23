@@ -29,7 +29,7 @@ import {
 import { TableLoadingSkeleton } from "@/components/ui/table-states";
 
 export default function ExpensesPage() {
-  const { user, isAdmin } = useAuth();
+  const { user, canEdit } = useAuth();
 
   const { data: expenseCategories } = useExpenseCategories();
   const createExpenseCategory = useCreateExpenseCategory();
@@ -112,7 +112,7 @@ export default function ExpensesPage() {
             Record and track business expenses
           </p>
         </div>
-        {isAdmin && (
+        {canEdit && (
           <Button onClick={() => setShowForm(!showForm)}>
             <Plus className="w-4 h-4 mr-2" />
             New Expense
@@ -121,7 +121,7 @@ export default function ExpensesPage() {
       </div>
 
       {/* Expense form */}
-      {showForm && isAdmin && (
+      {showForm && canEdit && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">

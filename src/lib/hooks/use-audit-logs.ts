@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSupabase } from "@/lib/supabase/use-supabase";
 import type { AuditLog } from "@/lib/types/database";
 
@@ -49,6 +49,44 @@ export function useAuditLogs(filters?: AuditLogFilters) {
 
       if (error) throw error;
       return data as AuditLog[];
+    },
+  });
+}
+
+/** Deletes a single audit log entry by ID. */
+export function useDeleteAuditLog() {
+  const supabase = useSupabase();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("audit_logs")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["audit-logs"] });
+    },
+  });
+}
+
+/** Deletes all audit log entries (admin wipe). */
+export function useClearAuditLogs() {
+  const supabase = useSupabase();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("audit_logs")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000"); // matches all rows
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["audit-logs"] });
     },
   });
 }

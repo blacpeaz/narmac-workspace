@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useAuditLogs } from "@/lib/hooks/use-audit-logs";
+import { useAuditLogs, useDeleteAuditLog, useClearAuditLogs } from "@/lib/hooks/use-audit-logs";
 import { useAuth } from "@/providers/auth-provider";
 import {
   Table,
@@ -12,11 +12,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { ChevronDown, ChevronRight, ShieldAlert } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, ShieldAlert, Trash2, X } from "lucide-react";
+import { toast } from "sonner";
 import { SELECT_CLASS } from "@/lib/format";
 
 const actionColors: Record<string, string> = {
@@ -196,6 +198,7 @@ export default function AuditLogsPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const { data: logs, isLoading } = useAuditLogs({
     module: moduleFilter || undefined,
@@ -203,6 +206,34 @@ export default function AuditLogsPage() {
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
   });
+  const deleteLog = useDeleteAuditLog();
+  const clearLogs = useClearAuditLogs();
+  const [confirmClear, setConfirmClear] = useState(false);
+
+  const handleDeleteClick = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setConfirmDeleteId(id);
+  };
+
+  const handleConfirmDelete = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    deleteLog.mutate(id, {
+      onSuccess: () => { toast.success("Log entry deleted."); setConfirmDeleteId(null); },
+      onError: () => { toast.error("Failed to delete. Check Supabase RLS policies."); setConfirmDeleteId(null); },
+    });
+  };
+
+  const handleCancelDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setConfirmDeleteId(null);
+  };
+
+  const handleClearAll = () => {
+    clearLogs.mutate(undefined, {
+      onSuccess: () => { toast.success("All audit logs cleared."); setConfirmClear(false); },
+      onError: () => { toast.error("Failed to clear logs."); setConfirmClear(false); },
+    });
+  };
 
   if (authLoading) {
     return <Skeleton className="h-96" />;
@@ -222,11 +253,32 @@ export default function AuditLogsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Audit Logs</h1>
-        <p className="text-sm text-[var(--muted-foreground)]">
-          Track all create, update, and delete operations
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Audit Logs</h1>
+          <p className="text-sm text-[var(--muted-foreground)]">
+            Track all create, update, and delete operations
+          </p>
+        </div>
+        {!confirmClear ? (
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-red-600 border-red-200 hover:bg-red-50 dark:hover:bg-red-950/20 flex-shrink-0"
+            onClick={() => setConfirmClear(true)}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Clear All Logs
+          </Button>
+        ) : (
+          <div className="flex items-center gap-2 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
+            <span className="text-sm text-red-700 dark:text-red-300">Delete all logs permanently?</span>
+            <Button size="sm" variant="destructive" onClick={handleClearAll} disabled={clearLogs.isPending}>
+              {clearLogs.isPending ? "Clearing..." : "Yes, delete all"}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setConfirmClear(false)}>Cancel</Button>
+          </div>
+        )}
       </div>
 
       {/* Filters */}
@@ -289,10 +341,12 @@ export default function AuditLogsPage() {
               <TableRow>
                 <TableHead className="w-8" />
                 <TableHead>Date</TableHead>
+
                 <TableHead>User</TableHead>
                 <TableHead>Action</TableHead>
                 <TableHead>Module</TableHead>
                 <TableHead>Record ID</TableHead>
+                <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -352,6 +406,35 @@ export default function AuditLogsPage() {
                         </TableCell>
                         <TableCell className="font-mono text-xs text-[var(--muted-foreground)]">
                           {log.record_id?.slice(0, 8)}…
+                        </TableCell>
+                        <TableCell>
+                          {confirmDeleteId === log.id ? (
+                            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                onClick={(e) => handleConfirmDelete(log.id, e)}
+                                disabled={deleteLog.isPending}
+                                className="p-1.5 rounded bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/40 text-emerald-600 transition-colors"
+                                title="Confirm delete"
+                              >
+                                <Check className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={handleCancelDelete}
+                                className="p-1.5 rounded bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-900/40 text-red-600 transition-colors"
+                                title="Cancel"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={(e) => handleDeleteClick(log.id, e)}
+                              className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-950/20 text-[var(--muted-foreground)] hover:text-red-600 transition-colors"
+                              title="Delete this log entry"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
                         </TableCell>
                       </TableRow>
                       {isExpanded && (

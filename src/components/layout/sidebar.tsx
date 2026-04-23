@@ -12,6 +12,7 @@ import {
   Receipt,
   BarChart3,
   ClipboardList,
+  Users,
   Menu,
   X,
 } from "lucide-react";
@@ -24,8 +25,9 @@ const navItems = [
   { href: "/sales", label: "Sales", icon: Banknote, adminOnly: false },
   { href: "/expenses", label: "Expenses", icon: Receipt, adminOnly: false },
   { href: "/visualization", label: "Visualization", icon: BarChart3, adminOnly: false },
-  { href: "/products", label: "Products", icon: Package, adminOnly: true },
+  { href: "/products", label: "Products", icon: Package, adminOnly: false },
   { href: "/audit-logs", label: "Audit Logs", icon: ClipboardList, adminOnly: true },
+  { href: "/users", label: "Users", icon: Users, adminOnly: true },
 ];
 
 export function Sidebar() {
