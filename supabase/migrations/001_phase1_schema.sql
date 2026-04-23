@@ -23,7 +23,7 @@ security definer
 set search_path = public
 as $$
   select exists (
-    select 1 from public.users where id = auth.uid() and role = 'admin'
+    select 1 from public.users where id = auth.uid()::text and role::text = 'admin'
   );
 $$;
 
@@ -46,7 +46,7 @@ create table public.products (
   low_stock_threshold numeric not null default 0,
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
-  created_by uuid references public.users(id),
+  created_by text references public.users(id),
   unique (type, size)
 );
 
@@ -74,7 +74,7 @@ create table public.stock_transactions (
   reference_id uuid,
   notes text,
   created_at timestamptz not null default now(),
-  created_by uuid references public.users(id)
+  created_by text references public.users(id)
 );
 
 alter table public.stock_transactions enable row level security;
@@ -90,7 +90,7 @@ create policy "Admins can insert stock_transactions"
 -- 4. Audit logs table
 create table public.audit_logs (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid references public.users(id),
+  user_id text references public.users(id),
   action text not null check (action in ('CREATE', 'UPDATE', 'DELETE')),
   module text not null,
   record_id uuid,

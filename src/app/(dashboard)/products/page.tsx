@@ -7,6 +7,7 @@ import {
   useCreateProduct,
   useUpdateProduct,
   useToggleProduct,
+  useDeleteProduct,
 } from "@/lib/hooks/use-products";
 import { ProductTable } from "@/components/products/product-table";
 import { ProductDialog } from "@/components/products/product-dialog";
@@ -25,11 +26,13 @@ export default function ProductsPage() {
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
   const toggleProduct = useToggleProduct();
+  const deleteProduct = useDeleteProduct();
   const { data: categories } = useCategories();
   const deleteCategory = useDeleteCategory();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   if (authLoading) {
     return <Skeleton className="h-96" />;
@@ -98,6 +101,25 @@ export default function ProductsPage() {
     );
   };
 
+  const handleDeleteClick = (product: Product) => {
+    setConfirmDeleteId(product.id);
+  };
+
+  const handleConfirmDelete = (product: Product) => {
+    deleteProduct.mutate(product, {
+      onSuccess: () => {
+        toast.success("Product deleted");
+        setConfirmDeleteId(null);
+      },
+      onError: (err) => {
+        toast.error(err.message);
+        setConfirmDeleteId(null);
+      },
+    });
+  };
+
+  const handleCancelDelete = () => setConfirmDeleteId(null);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -122,7 +144,12 @@ export default function ProductsPage() {
           products={products ?? []}
           onEdit={(product) => setEditingProduct(product)}
           onToggle={handleToggle}
+          onDelete={handleDeleteClick}
+          confirmDeleteId={confirmDeleteId}
+          onConfirmDelete={handleConfirmDelete}
+          onCancelDelete={handleCancelDelete}
           isToggling={toggleProduct.isPending}
+          isDeleting={deleteProduct.isPending}
           canEdit={canEdit}
         />
       )}

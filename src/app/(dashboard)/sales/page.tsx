@@ -20,7 +20,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Banknote, Plus } from "lucide-react";
+import { Banknote, FileSpreadsheet, Plus } from "lucide-react";
+import * as XLSX from "xlsx";
 import { formatCurrency, SELECT_CLASS } from "@/lib/format";
 import type { PaymentType } from "@/lib/types/database";
 import { TableLoadingSkeleton } from "@/components/ui/table-states";
@@ -52,11 +53,40 @@ export default function SalesPage() {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
+  const [customerCategory, setCustomerCategory] = useState("");
   const [showForm, setShowForm] = useState(false);
 
   const activeProducts = products?.filter((p) => p.is_active) ?? [];
   // Compute total live so the user sees it update as they type.
   const total = Number(quantity) * Number(unitPrice);
+
+  const handleExportExcel = () => {
+    if (!sales?.length) return;
+    const rows = sales.map((s) => {
+      const p = s.product as unknown as { type: string; size: string | null } | undefined;
+      return {
+        Date: format(new Date(s.created_at), "MMM d, yyyy"),
+        Product: p ? (p.size ? `${p.type} - ${p.size}` : p.type) : "—",
+        Quantity: s.quantity,
+        "Unit Price (Ar)": Number(s.unit_price),
+        "Total (Ar)": Number(s.total),
+        Payment: s.payment_type,
+        "Customer Name": s.customer_name ?? "",
+        "Customer Phone": s.customer_phone ?? "",
+        "Customer Address": s.customer_address ?? "",
+        "Customer Category": s.customer_category ?? "",
+        Notes: s.notes ?? "",
+        "Recorded By": (s.user as unknown as { full_name: string } | undefined)?.full_name ?? "",
+      };
+    });
+    const ws = XLSX.utils.json_to_sheet(rows);
+    // Auto-fit column widths
+    ws["!cols"] = Object.keys(rows[0]).map((k) => ({ wch: Math.max(k.length + 2, 14) }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Sales");
+    const label = dateFrom && dateTo ? `_${dateFrom}_to_${dateTo}` : "";
+    XLSX.writeFile(wb, `narmac_sales${label}.xlsx`);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,6 +102,7 @@ export default function SalesPage() {
         customer_name: customerName || undefined,
         customer_phone: customerPhone || undefined,
         customer_address: customerAddress || undefined,
+        customer_category: customerCategory || undefined,
         created_by: user.id,
       });
 
@@ -85,6 +116,7 @@ export default function SalesPage() {
       setCustomerName("");
       setCustomerPhone("");
       setCustomerAddress("");
+      setCustomerCategory("");
       setShowForm(false);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to record sale";
@@ -115,12 +147,23 @@ export default function SalesPage() {
             Record and track product sales
           </p>
         </div>
-        {canEdit && (
-          <Button onClick={() => setShowForm(!showForm)}>
-            <Plus className="w-4 h-4 mr-2" />
-            New Sale
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportExcel}
+            disabled={!sales?.length}
+          >
+            <FileSpreadsheet className="w-4 h-4 mr-2" />
+            Export Excel
           </Button>
-        )}
+          {canEdit && (
+            <Button onClick={() => setShowForm(!showForm)}>
+              <Plus className="w-4 h-4 mr-2" />
+              New Sale
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Sale form */}
@@ -208,7 +251,7 @@ export default function SalesPage() {
 
               <div className="sm:col-span-2 lg:col-span-3 border-t pt-4 mt-2">
                 <p className="text-sm font-medium text-[var(--muted-foreground)] mb-3">Customer Info (optional)</p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="space-y-2">
                     <Label>Customer Name</Label>
                     <Input
@@ -232,6 +275,18 @@ export default function SalesPage() {
                       value={customerAddress}
                       onChange={(e) => setCustomerAddress(e.target.value)}
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Category</Label>
+                    <select
+                      value={customerCategory}
+                      onChange={(e) => setCustomerCategory(e.target.value)}
+                      className={SELECT_CLASS}
+                    >
+                      <option value="">— Select category —</option>
+                      <option value="Bales">Bales</option>
+                      <option value="Household items">Household items</option>
+                    </select>
                   </div>
                 </div>
               </div>

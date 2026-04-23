@@ -72,6 +72,7 @@ interface CreateSaleInput {
   customer_name?: string;
   customer_phone?: string;
   customer_address?: string;
+  customer_category?: string;
   created_by: string;
 }
 
@@ -85,39 +86,30 @@ export function useCreateSale() {
 
   return useMutation({
     mutationFn: async (input: CreateSaleInput) => {
-      // Insert the sale row first to get its ID for the stock transaction reference.
-      const { data: sale, error: saleError } = await supabase
-        .from("sales")
-        .insert({
-          product_id: input.product_id,
-          quantity: input.quantity,
-          unit_price: input.unit_price,
-          payment_type: input.payment_type,
-          notes: input.notes || null,
-          customer_name: input.customer_name || null,
-          customer_phone: input.customer_phone || null,
-          customer_address: input.customer_address || null,
-          created_by: input.created_by,
-        })
-        .select()
-        .single();
+      // Call the atomic DB function which:
+      //  1. Locks the product row to serialize concurrent sales
+      //  2. Checks available stock — throws if insufficient
+      //  3. Inserts sale + stock-out transaction in one transaction
+      const { data: sale, error: rpcError } = await supabase.rpc(
+        "create_sale_safe",
+        {
+          p_product_id:        input.product_id,
+          p_quantity:          input.quantity,
+          p_unit_price:        input.unit_price,
+          p_payment_type:      input.payment_type,
+          p_notes:             input.notes             ?? null,
+          p_customer_name:     input.customer_name     ?? null,
+          p_customer_phone:    input.customer_phone    ?? null,
+          p_customer_address:  input.customer_address  ?? null,
+          p_customer_category: input.customer_category ?? null,
+          p_created_by:        input.created_by,
+        }
+      );
 
-      if (saleError) throw saleError;
-
-      // Deduct inventory by creating a stock-out transaction linked to this sale.
-      const { error: stockError } = await supabase
-        .from("stock_transactions")
-        .insert({
-          product_id: input.product_id,
-          type: "OUT",
-          quantity: input.quantity,
-          reference_type: "sale",
-          reference_id: sale.id,
-          notes: `Sale #${sale.id.slice(0, 8)}`,
-          created_by: input.created_by,
-        });
-
-      if (stockError) throw stockError;
+      if (rpcError) {
+        // Surface the plain-English message from the DB (e.g. "Insufficient stock...")
+        throw new Error(rpcError.message);
+      }
 
       await logAudit(supabase, {
         userId: input.created_by, action: "CREATE", module: "sales",

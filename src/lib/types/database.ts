@@ -69,6 +69,7 @@ export interface Sale {
   customer_name: string | null;
   customer_phone: string | null;
   customer_address: string | null;
+  customer_category: string | null;
   created_at: string;
   created_by: string | null;
   product?: Product;

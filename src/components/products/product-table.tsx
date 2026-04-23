@@ -10,14 +10,19 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Pencil, ToggleLeft, ToggleRight } from "lucide-react";
+import { Pencil, ToggleLeft, ToggleRight, Trash2, Check, X } from "lucide-react";
 import type { Product } from "@/lib/types/database";
 
 interface ProductTableProps {
   products: Product[];
   onEdit: (product: Product) => void;
   onToggle: (id: string, is_active: boolean) => void;
+  onDelete: (product: Product) => void;
+  confirmDeleteId: string | null;
+  onConfirmDelete: (product: Product) => void;
+  onCancelDelete: () => void;
   isToggling?: boolean;
+  isDeleting?: boolean;
   canEdit?: boolean;
 }
 
@@ -26,7 +31,12 @@ export function ProductTable({
   products,
   onEdit,
   onToggle,
+  onDelete,
+  confirmDeleteId,
+  onConfirmDelete,
+  onCancelDelete,
   isToggling,
+  isDeleting,
   canEdit = true,
 }: ProductTableProps) {
   return (
@@ -79,31 +89,67 @@ export function ProductTable({
                 {canEdit && (
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onEdit(product)}
-                        title="Edit"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() =>
-                          onToggle(product.id, !product.is_active)
-                        }
-                        disabled={isToggling}
-                        title={
-                          product.is_active ? "Deactivate" : "Activate"
-                        }
-                      >
-                        {product.is_active ? (
-                          <ToggleRight className="h-4 w-4 text-emerald-600" />
-                        ) : (
-                          <ToggleLeft className="h-4 w-4 text-gray-400" />
-                        )}
-                      </Button>
+                      {confirmDeleteId === product.id ? (
+                        // Inline confirmation: green ✓ confirm, red ✗ cancel
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onConfirmDelete(product)}
+                            disabled={isDeleting}
+                            title="Confirm delete"
+                            className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                          >
+                            <Check className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={onCancelDelete}
+                            title="Cancel"
+                            className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onEdit(product)}
+                            title="Edit"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() =>
+                              onToggle(product.id, !product.is_active)
+                            }
+                            disabled={isToggling}
+                            title={
+                              product.is_active ? "Deactivate" : "Activate"
+                            }
+                          >
+                            {product.is_active ? (
+                              <ToggleRight className="h-4 w-4 text-emerald-600" />
+                            ) : (
+                              <ToggleLeft className="h-4 w-4 text-gray-400" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onDelete(product)}
+                            title="Delete product"
+                            className="text-red-400 hover:text-red-600 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </TableCell>
                 )}

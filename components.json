@@ -1,4 +1,6 @@
-{
+ALTER TABLE public.sales
+  ADD COLUMN customer_category text
+    CHECK (customer_category IN ('Bales', 'Household items'));{
   "$schema": "https://ui.shadcn.com/schema.json",
   "style": "base-nova",
   "rsc": true,

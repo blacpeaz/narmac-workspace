@@ -13,6 +13,7 @@ import {
   BarChart3,
   ClipboardList,
   Users,
+  FolderDown,
   Menu,
   X,
 } from "lucide-react";
@@ -26,6 +27,7 @@ const navItems = [
   { href: "/expenses", label: "Expenses", icon: Receipt, adminOnly: false },
   { href: "/visualization", label: "Visualization", icon: BarChart3, adminOnly: false },
   { href: "/products", label: "Products", icon: Package, adminOnly: false },
+  { href: "/data", label: "Data", icon: FolderDown, adminOnly: false },
   { href: "/audit-logs", label: "Audit Logs", icon: ClipboardList, adminOnly: true },
   { href: "/users", label: "Users", icon: Users, adminOnly: true },
 ];

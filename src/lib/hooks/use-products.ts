@@ -160,3 +160,40 @@ export function useToggleProduct() {
     onSuccess: () => invalidateProductKeys(queryClient),
   });
 }
+
+/**
+ * Deletes a product that has no sales or stock transaction history.
+ * The DB will reject with ON DELETE RESTRICT if any history exists —
+ * we catch that and surface a plain-English message.
+ */
+export function useDeleteProduct() {
+  const supabase = useSupabase();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (product: Product) => {
+      const userId = await getCurrentUserId(supabase);
+
+      const { error } = await supabase
+        .from("products")
+        .delete()
+        .eq("id", product.id);
+
+      if (error) {
+        // Foreign key violation = product has linked sales or stock movements
+        if (error.code === "23503") {
+          throw new Error(
+            `"${product.type}${product.size ? ` - ${product.size}` : ""}" cannot be deleted because it has sales or stock records linked to it. Deactivate it instead to hide it from the sales form.`
+          );
+        }
+        throw new Error(error.message);
+      }
+
+      await logAudit(supabase, {
+        userId, action: "DELETE", module: "products",
+        recordId: product.id, oldValue: product as unknown as Record<string, unknown>,
+      });
+    },
+    onSuccess: () => invalidateProductKeys(queryClient),
+  });
+}

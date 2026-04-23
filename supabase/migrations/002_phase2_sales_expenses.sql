@@ -13,7 +13,7 @@ create table public.sales (
   payment_type text not null check (payment_type in ('cash', 'transfer', 'credit')),
   notes text,
   created_at timestamptz not null default now(),
-  created_by uuid references public.users(id)
+  created_by text references public.users(id)
 );
 
 alter table public.sales enable row level security;
@@ -37,7 +37,7 @@ create table public.expenses (
   amount numeric not null check (amount > 0),
   description text,
   created_at timestamptz not null default now(),
-  created_by uuid references public.users(id)
+  created_by text references public.users(id)
 );
 
 alter table public.expenses enable row level security;
